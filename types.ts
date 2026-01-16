@@ -22,6 +22,8 @@ export interface AppUser {
   id: string;
   name: string;
   role: UserRole;
+  email: string;
+  password: string;
 }
 
 export type BRDPriority = 'Good To Have' | 'Must To Have';
@@ -67,14 +69,41 @@ export interface BRDAuditItem {
   impact: 'high' | 'medium' | 'low';
 }
 
+export interface MarketInsight {
+  aspect: string;
+  analysis: string;
+  verdict: 'positive' | 'neutral' | 'negative';
+}
+
 export interface BRDAudit {
-  overallScore: number; // 1-100
-  summary: string;
+  // Business Value Assessment
+  businessValueScore: number; // 1-100
+  businessValueSummary: string;
+  estimatedROI: string;
+  timeToValue: string;
+  
+  // Market Analysis
+  marketInsights: MarketInsight[];
+  competitorLandscape: string;
+  marketTiming: 'excellent' | 'good' | 'fair' | 'poor';
+  marketTimingReason: string;
+  
+  // Pros & Cons
   pros: string[];
   cons: string[];
-  suggestions: BRDAuditItem[];
+  
+  // What needs improvement to proceed
+  criticalImprovements: string[];
+  niceToHaveImprovements: string[];
+  
+  // Risks & Feasibility
   risks: string[];
-  recommendations: string[];
+  feasibilityScore: number; // 1-100
+  feasibilityReason: string;
+  
+  // Final Verdict
+  overallVerdict: 'strong_go' | 'go_with_caution' | 'needs_work' | 'no_go';
+  verdictSummary: string;
 }
 
 export interface BRD {

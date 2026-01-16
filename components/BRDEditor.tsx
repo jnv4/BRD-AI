@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { BRD, BRDStatus, UserRole, BRDContent, BRDPriority, BRDCategory, AppUser, BRDAudit } from '../types';
-import { refineFieldContent, auditBRD, refineBRDWithSuggestions } from '../services/geminiService';
+import { refineFieldContent, auditBRD } from '../services/geminiService';
 import WorkflowTimeline from './WorkflowTimeline';
 import ActionLog from './ActionLog';
 import BRDAuditPanel from './BRDAuditPanel';
@@ -13,10 +13,11 @@ interface BRDEditorProps {
   onUpdateBRD: (updates: Partial<BRD>) => void;
   onAction: (action: string, nextStatus: BRDStatus, comment?: string) => void;
   onRevise: () => void;
+  onDelete: () => void;
   currentUser: AppUser;
 }
 
-const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAction, onRevise, currentUser }) => {
+const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAction, onRevise, onDelete, currentUser }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState<BRDContent>(brd.content);
   const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
@@ -32,7 +33,6 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
   // Verification/Audit state
   const [isAuditLoading, setIsAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
-  const iterationCount = (brd.verificationHistory?.length || 0) + 1;
 
   // Auto-trigger audit when BRD is in PENDING_VERIFICATION status and no audit exists
   useEffect(() => {
@@ -45,8 +45,7 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
     setIsAuditLoading(true);
     setAuditError(null);
     try {
-      // For initial audit, pass iteration count (no previous audit)
-      const audit = await auditBRD(brd.projectName, brd.content, undefined, iterationCount);
+      const audit = await auditBRD(brd.projectName, brd.content);
       onUpdateBRD({ audit });
     } catch (err) {
       setAuditError(err instanceof Error ? err.message : "Failed to generate audit");
@@ -55,72 +54,16 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
     }
   };
 
-  const handleKeepBRD = () => {
-    // User is satisfied - finalize and move to approval workflow
-    const history = brd.verificationHistory || [];
+  const handleProceedAfterAudit = () => {
+    // User wants to proceed - move to approval workflow
     onUpdateBRD({
       isVerified: true,
-      status: BRDStatus.VERIFIED,
-      verificationHistory: [
-        ...history,
-        {
-          iteration: iterationCount,
-          timestamp: Date.now(),
-          action: 'kept',
-          previousAudit: brd.audit
-        }
-      ]
+      status: BRDStatus.VERIFIED
     });
   };
 
-  const handleRefineBRD = async () => {
-    if (!brd.audit) return;
-    
-    const previousAudit = brd.audit; // Store reference to previous audit
-    const newIterationCount = iterationCount + 1;
-    
-    setIsAuditLoading(true);
-    setAuditError(null);
-    try {
-      // Generate refined content based on audit suggestions
-      const refinedContent = await refineBRDWithSuggestions(
-        brd.projectName,
-        brd.content,
-        previousAudit
-      );
-
-      // Save history and update content
-      const history = brd.verificationHistory || [];
-      onUpdateBRD({
-        content: refinedContent,
-        audit: undefined, // Clear old audit temporarily
-        verificationHistory: [
-          ...history,
-          {
-            iteration: iterationCount,
-            timestamp: Date.now(),
-            action: 'refined',
-            previousAudit: previousAudit
-          }
-        ]
-      });
-
-      // Generate new audit for the refined content, passing previous audit for comparison
-      const newAudit = await auditBRD(
-        brd.projectName, 
-        refinedContent, 
-        previousAudit, 
-        newIterationCount
-      );
-      onUpdateBRD({ audit: newAudit });
-      
-      // Update local edit content
-      setEditContent(refinedContent);
-    } catch (err) {
-      setAuditError(err instanceof Error ? err.message : "Failed to refine BRD");
-    } finally {
-      setIsAuditLoading(false);
-    }
+  const handleDeleteBRD = () => {
+    onDelete();
   };
 
   const handleSubmitForApproval = () => {
@@ -399,42 +342,9 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
             <BRDAuditPanel
               audit={brd.audit!}
               isLoading={isAuditLoading}
-              iterationCount={iterationCount}
-              isVerified={brd.isVerified}
-              onKeep={handleKeepBRD}
-              onRefine={handleRefineBRD}
+              onDelete={handleDeleteBRD}
+              onProceed={handleProceedAfterAudit}
             />
-          )}
-
-          {/* Verification History */}
-          {brd.verificationHistory && brd.verificationHistory.length > 0 && (
-            <div className="mt-6 bg-white p-6 rounded-2xl border border-slate-200">
-              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Verification History</h4>
-              <div className="space-y-3">
-                {brd.verificationHistory.map((entry, i) => (
-                  <div key={i} className="flex items-center gap-4 text-sm">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${
-                      entry.action === 'refined' ? 'bg-indigo-500' : 'bg-emerald-500'
-                    }`}>
-                      {entry.iteration}
-                    </div>
-                    <div>
-                      <span className={`font-bold ${entry.action === 'refined' ? 'text-indigo-600' : 'text-emerald-600'}`}>
-                        {entry.action === 'refined' ? 'Refined' : 'Finalized'}
-                      </span>
-                      <span className="text-slate-400 ml-2">
-                        {new Date(entry.timestamp).toLocaleString()}
-                      </span>
-                      {entry.previousAudit && (
-                        <span className="text-slate-500 ml-2">
-                          (Score: {entry.previousAudit.overallScore}/100)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           )}
         </div>
       )}
@@ -450,7 +360,6 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
           <div>
             <h4 className="text-teal-800 font-bold text-lg mb-1">BRD Verified & Ready</h4>
             <p className="text-teal-700 text-sm leading-relaxed font-medium">
-              This BRD has been verified through {iterationCount - 1} AI audit iteration(s). 
               Click "Submit for Approval" above to begin the stakeholder approval workflow.
             </p>
           </div>

@@ -168,51 +168,22 @@ Note: The user provided simple answers. Please translate their simple ideas into
 
 export async function auditBRD(
   projectName: string, 
-  content: BRDContent, 
-  previousAudit?: BRDAudit,
-  iterationNumber: number = 1
+  content: BRDContent
 ): Promise<BRDAudit> {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // Build context about previous audit if this is a re-audit after refinement
-  let previousAuditContext = '';
-  if (previousAudit && iterationNumber > 1) {
-    previousAuditContext = `
-
-IMPORTANT CONTEXT - PREVIOUS AUDIT (Iteration ${iterationNumber - 1}):
-Previous Score: ${previousAudit.overallScore}/100
-Previous Weaknesses Identified:
-${previousAudit.cons.map(c => `- ${c}`).join('\n')}
-
-Previous Suggestions Given:
-${previousAudit.suggestions.map(s => `- [${s.impact}] ${s.description}`).join('\n')}
-
-Previous Risks Identified:
-${previousAudit.risks.map(r => `- ${r}`).join('\n')}
-
-THIS IS A REFINED VERSION: The BRD has been updated to address the above issues.
-You MUST compare this version against the previous weaknesses and:
-1. If a weakness was addressed, acknowledge it and DO NOT list it as a weakness again
-2. If the suggestions were implemented, the score SHOULD increase (typically +5 to +15 points per major improvement)
-3. Only identify NEW issues or issues that were NOT properly addressed
-4. The score should reflect the improvements made - if previous issues were fixed, score MUST be higher than ${previousAudit.overallScore}
-5. A well-refined BRD that addressed most issues should score 90+ 
-`;
-  }
-
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview",
       contents: {
         parts: [{
-          text: `You are a Senior Business Analyst and Quality Auditor. Perform a comprehensive audit of this Business Requirements Document.
+          text: `You are a Senior Business Strategy Consultant and Market Analyst. Perform a comprehensive BUSINESS VALUE and MARKET VIABILITY analysis of this Business Requirements Document.
 
 PROJECT NAME: "${projectName}"
-AUDIT ITERATION: ${iterationNumber}
-${previousAuditContext}
+
 BRD CONTENT:
 Purpose: ${content.purpose}
 
@@ -231,44 +202,82 @@ ${content.stakeholders.map(s => `- ${s.role}: ${s.responsibility}`).join('\n')}
 Priority: ${content.priority}
 Category: ${content.category}
 
-AUDIT REQUIREMENTS:
-1. Give an overall quality score from 1-100
-2. Provide a brief executive summary of the BRD quality
-3. List 3-5 specific STRENGTHS (pros) of this BRD
-4. List 3-5 specific WEAKNESSES (cons) of this BRD
-5. Provide actionable suggestions for improvement with impact levels
-6. Identify potential risks or gaps
-7. Give clear recommendations for enhancement
+ANALYSIS REQUIREMENTS:
 
-Be constructive but critical. Identify real issues that could cause problems during implementation.`
+1. BUSINESS VALUE ASSESSMENT (Score 1-100):
+   - Does this project deliver real business value?
+   - What's the estimated ROI potential?
+   - How long until value is realized?
+
+2. MARKET ANALYSIS:
+   - Is there market demand for this?
+   - What's the competitive landscape like?
+   - Is the timing right for this project?
+   - Provide 3-5 market insights with verdicts
+
+3. HONEST PROS & CONS:
+   - What are the genuine strengths of this proposal?
+   - What are the real weaknesses or concerns?
+
+4. WHAT NEEDS TO IMPROVE:
+   - Critical improvements required before proceeding
+   - Nice-to-have improvements that would strengthen the proposal
+
+5. RISKS & FEASIBILITY:
+   - What could go wrong?
+   - Is this technically and organizationally feasible?
+
+6. FINAL VERDICT:
+   - strong_go: Excellent proposal, proceed immediately
+   - go_with_caution: Good potential but address concerns first
+   - needs_work: Significant improvements needed before proceeding
+   - no_go: Fundamentally flawed or not viable
+
+Be brutally honest. This is a real business decision. Don't sugarcoat issues. 
+If this project shouldn't proceed, say so clearly and explain why.
+If it's a great opportunity, be enthusiastic but realistic.`
         }]
       },
       config: {
-        systemInstruction: `You are an expert BRD auditor. Analyze the document critically but constructively. 
-Focus on:
-- Clarity and completeness of requirements
-- Feasibility of objectives  
-- Scope definition quality
-- Stakeholder coverage
-- Potential ambiguities or gaps
-- Implementation risks
+        systemInstruction: `You are an expert business strategist who evaluates project proposals for real-world viability.
 
-CRITICAL SCORING RULES:
-- First iteration BRDs typically score 70-85
-- If this is a REFINED version (iteration > 1), you MUST acknowledge improvements
-- Refined versions that addressed previous issues MUST score HIGHER than the previous score
-- Each addressed weakness should add +3 to +8 points to the score
-- A well-refined BRD should score 90-98
-- Only give 100 if the BRD is absolutely perfect with no possible improvements
-- NEVER give a refined BRD the same or lower score unless it actually got worse
+Your job is to:
+1. Assess if this project will actually deliver business value
+2. Analyze market conditions and timing
+3. Identify what's good and what's problematic
+4. Give a clear verdict: should they proceed or not?
 
-Output a comprehensive audit in JSON format.`,
+Be like a trusted advisor who gives honest feedback:
+- Don't be overly positive just to be nice
+- Don't be harsh just to seem critical
+- Give genuinely useful insights that help make better decisions
+- If something is a bad idea, say so diplomatically but clearly
+- If something is great, explain why with specifics
+
+Output comprehensive analysis in JSON format.`,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            overallScore: { type: Type.NUMBER },
-            summary: { type: Type.STRING },
+            businessValueScore: { type: Type.NUMBER },
+            businessValueSummary: { type: Type.STRING },
+            estimatedROI: { type: Type.STRING },
+            timeToValue: { type: Type.STRING },
+            marketInsights: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  aspect: { type: Type.STRING },
+                  analysis: { type: Type.STRING },
+                  verdict: { type: Type.STRING, enum: ["positive", "neutral", "negative"] }
+                },
+                required: ["aspect", "analysis", "verdict"]
+              }
+            },
+            competitorLandscape: { type: Type.STRING },
+            marketTiming: { type: Type.STRING, enum: ["excellent", "good", "fair", "poor"] },
+            marketTimingReason: { type: Type.STRING },
             pros: { 
               type: Type.ARRAY, 
               items: { type: Type.STRING }
@@ -277,29 +286,29 @@ Output a comprehensive audit in JSON format.`,
               type: Type.ARRAY, 
               items: { type: Type.STRING }
             },
-            suggestions: {
+            criticalImprovements: {
               type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  type: { type: Type.STRING, enum: ["strength", "weakness", "suggestion", "risk"] },
-                  category: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  impact: { type: Type.STRING, enum: ["high", "medium", "low"] }
-                },
-                required: ["type", "category", "description", "impact"]
-              }
+              items: { type: Type.STRING }
+            },
+            niceToHaveImprovements: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
             },
             risks: {
               type: Type.ARRAY,
               items: { type: Type.STRING }
             },
-            recommendations: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            }
+            feasibilityScore: { type: Type.NUMBER },
+            feasibilityReason: { type: Type.STRING },
+            overallVerdict: { type: Type.STRING, enum: ["strong_go", "go_with_caution", "needs_work", "no_go"] },
+            verdictSummary: { type: Type.STRING }
           },
-          required: ["overallScore", "summary", "pros", "cons", "suggestions", "risks", "recommendations"]
+          required: [
+            "businessValueScore", "businessValueSummary", "estimatedROI", "timeToValue",
+            "marketInsights", "competitorLandscape", "marketTiming", "marketTimingReason",
+            "pros", "cons", "criticalImprovements", "niceToHaveImprovements",
+            "risks", "feasibilityScore", "feasibilityReason", "overallVerdict", "verdictSummary"
+          ]
         }
       }
     });
@@ -313,90 +322,3 @@ Output a comprehensive audit in JSON format.`,
   }
 }
 
-export async function refineBRDWithSuggestions(
-  projectName: string, 
-  currentContent: BRDContent, 
-  audit: BRDAudit
-): Promise<BRDContent> {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key is missing.");
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: {
-        parts: [{
-          text: `You are a Senior Business Analyst tasked with improving a BRD based on audit feedback.
-
-PROJECT NAME: "${projectName}"
-
-CURRENT BRD CONTENT:
-${JSON.stringify(currentContent, null, 2)}
-
-AUDIT FEEDBACK:
-Overall Score: ${audit.overallScore}/100
-Summary: ${audit.summary}
-
-Weaknesses Identified:
-${audit.cons.map(c => `- ${c}`).join('\n')}
-
-Suggestions for Improvement:
-${audit.suggestions.map(s => `- [${s.impact.toUpperCase()}] ${s.category}: ${s.description}`).join('\n')}
-
-Risks Identified:
-${audit.risks.map(r => `- ${r}`).join('\n')}
-
-Recommendations:
-${audit.recommendations.map(r => `- ${r}`).join('\n')}
-
-TASK:
-Generate an improved version of the BRD that:
-1. Addresses ALL the weaknesses mentioned
-2. Incorporates the high and medium impact suggestions
-3. Mitigates identified risks where possible
-4. Follows the recommendations
-5. Maintains or improves the existing strengths
-6. Keeps the same general structure but with enhanced, clearer content
-
-Ensure the refined BRD is more comprehensive, specific, and implementation-ready.`
-        }]
-      },
-      config: {
-        systemInstruction: "You are an expert Business Analyst improving a BRD. Generate a refined, enhanced version that addresses all audit feedback while maintaining professionalism and clarity. Output valid JSON matching the BRD content schema.",
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            purpose: { type: Type.STRING },
-            objectives: { type: Type.ARRAY, items: { type: Type.STRING } },
-            scopeIncluded: { type: Type.ARRAY, items: { type: Type.STRING } },
-            scopeExcluded: { type: Type.ARRAY, items: { type: Type.STRING } },
-            priority: { type: Type.STRING, enum: ["Good To Have", "Must To Have"] },
-            category: { type: Type.STRING, enum: ["Cost Saving", "Man Days Saving", "Compliance"] },
-            stakeholders: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  role: { type: Type.STRING },
-                  responsibility: { type: Type.STRING }
-                },
-                required: ["role", "responsibility"]
-              }
-            }
-          },
-          required: ["purpose", "objectives", "scopeIncluded", "scopeExcluded", "stakeholders", "priority", "category"]
-        }
-      }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("No refined content from AI.");
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("BRD Refinement Error:", error);
-    throw new Error(error instanceof Error ? error.message : "Refinement failed");
-  }
-}

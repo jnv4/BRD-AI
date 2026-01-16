@@ -12,18 +12,24 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, users, onUpdateUsers }) => {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<UserRole>(UserRole.BUSINESS);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   if (!isOpen) return null;
 
   const handleAddUser = () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) return;
     const newUser: AppUser = {
       id: Math.random().toString(36).substring(2, 9),
       name: newName,
-      role: newRole
+      role: newRole,
+      email: newEmail,
+      password: newPassword
     };
     onUpdateUsers([...users, newUser]);
     setNewName("");
+    setNewEmail("");
+    setNewPassword("");
   };
 
   const handleDeleteUser = (id: string) => {
@@ -50,8 +56,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, users, onUpdat
           {/* Add User Section */}
           <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
             <h3 className="text-sm font-bold text-indigo-900 mb-4 uppercase tracking-wider">Provision New Identity</h3>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
                 <label className="text-[10px] font-bold text-indigo-600 mb-1 block uppercase">Full Name</label>
                 <input 
                   className="w-full p-2.5 rounded-xl border-2 border-white focus:border-indigo-400 outline-none text-sm transition-all"
@@ -60,7 +66,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, users, onUpdat
                   onChange={(e) => setNewName(e.target.value)}
                 />
               </div>
-              <div className="w-full md:w-48">
+              <div>
                 <label className="text-[10px] font-bold text-indigo-600 mb-1 block uppercase">Assigned Role</label>
                 <select 
                   className="w-full p-2.5 rounded-xl border-2 border-white focus:border-indigo-400 outline-none text-sm font-bold bg-white"
@@ -72,16 +78,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, users, onUpdat
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="text-[10px] font-bold text-indigo-600 mb-1 block uppercase">Email Address</label>
+                <input 
+                  type="email"
+                  className="w-full p-2.5 rounded-xl border-2 border-white focus:border-indigo-400 outline-none text-sm transition-all"
+                  placeholder="e.g. user@company.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-indigo-600 mb-1 block uppercase">Password</label>
+                <input 
+                  type="text"
+                  className="w-full p-2.5 rounded-xl border-2 border-white focus:border-indigo-400 outline-none text-sm transition-all"
+                  placeholder="e.g. demo123"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
               <button 
                 onClick={handleAddUser}
-                disabled={!newName.trim()}
-                className="self-end px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200"
+                disabled={!newName.trim() || !newEmail.trim() || !newPassword.trim()}
+                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-200"
               >
                 Create User
               </button>
             </div>
             <p className="text-[10px] text-indigo-400 mt-4 leading-relaxed font-medium">
-              Note: Rights are strictly tied to the role. Business users only approve Business phases. CTOs only provide final sign-off.
+              Note: Rights are strictly tied to the role. Business users only approve Business phases. CTOs only provide final sign-off. In this demo, passwords are visible for testing purposes.
             </p>
           </div>
 
@@ -92,16 +120,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, users, onUpdat
               {users.map(u => (
                 <div key={u.id} className="p-4 flex justify-between items-center group hover:bg-slate-50 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 uppercase">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white uppercase ${
+                      u.role === UserRole.ADMIN ? 'bg-purple-500' : 
+                      u.role === UserRole.CTO ? 'bg-amber-500' : 
+                      u.role === UserRole.PROJECT_MANAGER ? 'bg-indigo-500' : 
+                      u.role === UserRole.BUSINESS ? 'bg-emerald-500' : 'bg-cyan-500'
+                    }`}>
                       {u.name.charAt(0)}
                     </div>
-                    <div>
-                      <p className="font-bold text-slate-800 text-sm">{u.name}</p>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                        u.role === UserRole.ADMIN ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {u.role}
-                      </span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-bold text-slate-800 text-sm">{u.name}</p>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                          u.role === UserRole.ADMIN ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[10px] text-slate-400">
+                        <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">{u.email}</span>
+                        <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">••• {u.password.slice(-3)}</span>
+                      </div>
                     </div>
                   </div>
                   <button 

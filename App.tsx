@@ -7,6 +7,7 @@ import BRDEditor from './components/BRDEditor';
 import Header from './components/Header';
 import Notification from './components/Notification';
 import AdminPanel from './components/AdminPanel';
+import LoginPage from './components/LoginPage';
 
 const generateId = () => {
   try {
@@ -17,11 +18,11 @@ const generateId = () => {
 };
 
 const DEFAULT_USERS: AppUser[] = [
-  { id: '1', name: 'Shreya Tivrekar', role: UserRole.PROJECT_MANAGER },
-  { id: '2', name: 'Admin User', role: UserRole.ADMIN },
-  { id: '3', name: 'Business Owner', role: UserRole.BUSINESS },
-  { id: '4', name: 'CTO Executive', role: UserRole.CTO },
-  { id: '5', name: 'Engineering Lead', role: UserRole.TEAM_LEAD },
+  { id: '1', name: 'Shreya Tivrekar', role: UserRole.PROJECT_MANAGER, email: 'pm@brd.com', password: 'pm123' },
+  { id: '2', name: 'Admin User', role: UserRole.ADMIN, email: 'admin@brd.com', password: 'admin123' },
+  { id: '3', name: 'Business Owner', role: UserRole.BUSINESS, email: 'business@brd.com', password: 'business123' },
+  { id: '4', name: 'CTO Executive', role: UserRole.CTO, email: 'cto@brd.com', password: 'cto123' },
+  { id: '5', name: 'Engineering Lead', role: UserRole.TEAM_LEAD, email: 'lead@brd.com', password: 'lead123' },
 ];
 
 const App: React.FC = () => {
@@ -31,8 +32,9 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [users, setUsers] = useState<AppUser[]>(DEFAULT_USERS);
-  const [currentUser, setCurrentUser] = useState<AppUser>(DEFAULT_USERS[0]);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const savedBrds = localStorage.getItem('brd_data');
@@ -44,8 +46,17 @@ const App: React.FC = () => {
     const savedUsers = localStorage.getItem('brd_users');
     if (savedUsers) setUsers(JSON.parse(savedUsers));
 
-    const savedCurrent = localStorage.getItem('brd_current_user');
-    if (savedCurrent) setCurrentUser(JSON.parse(savedCurrent));
+    // Check for authenticated session
+    const savedSession = localStorage.getItem('brd_session');
+    if (savedSession) {
+      const session = JSON.parse(savedSession);
+      const savedUsersList = savedUsers ? JSON.parse(savedUsers) : DEFAULT_USERS;
+      const sessionUser = savedUsersList.find((u: AppUser) => u.id === session.userId);
+      if (sessionUser) {
+        setCurrentUser(sessionUser);
+        setIsAuthenticated(true);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -61,8 +72,22 @@ const App: React.FC = () => {
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem('brd_current_user', JSON.stringify(currentUser));
-  }, [currentUser]);
+    if (isAuthenticated && currentUser) {
+      localStorage.setItem('brd_session', JSON.stringify({ userId: currentUser.id, timestamp: Date.now() }));
+    }
+  }, [currentUser, isAuthenticated]);
+
+  const handleLogin = (user: AppUser) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    showToast(`Welcome back, ${user.name}!`, 'success');
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('brd_session');
+  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -258,6 +283,11 @@ const App: React.FC = () => {
 
   const activeBrd = brds.find(b => b.id === activeBrdId) || null;
 
+  // Show login page if not authenticated
+  if (!isAuthenticated || !currentUser) {
+    return <LoginPage users={users} onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Header 
@@ -265,6 +295,7 @@ const App: React.FC = () => {
         users={users}
         onUserChange={setCurrentUser}
         onOpenAdmin={() => setIsAdminPanelOpen(true)}
+        onLogout={handleLogout}
         notifications={notifications}
         onClearNotifications={() => setNotifications([])}
         onMarkAsRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))}
@@ -289,6 +320,12 @@ const App: React.FC = () => {
               onUpdateBRD={(updates) => handleUpdateBRD(activeBrd.id, updates)}
               onAction={(action, status, comment) => handleAction(activeBrd.id, action, status, comment)}
               onRevise={() => handleRevise(activeBrd.id)}
+              onDelete={() => {
+                setBrds(prev => prev.filter(b => b.id !== activeBrd.id));
+                setActiveBrdId(null);
+                showToast("BRD deleted successfully", "success");
+                addNotification("BRD Deleted", `Project "${activeBrd.projectName}" has been removed.`, "info");
+              }}
               currentUser={currentUser}
             />
           ) : (

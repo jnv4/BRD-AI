@@ -7,12 +7,13 @@ interface HeaderProps {
   users: AppUser[];
   onUserChange: (user: AppUser) => void;
   onOpenAdmin: () => void;
+  onLogout: () => void;
   notifications: NotificationItem[];
   onClearNotifications: () => void;
   onMarkAsRead: (id: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, users, onUserChange, onOpenAdmin, notifications, onClearNotifications, onMarkAsRead }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, users, onUserChange, onOpenAdmin, onLogout, notifications, onClearNotifications, onMarkAsRead }) => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -98,25 +99,39 @@ const Header: React.FC<HeaderProps> = ({ currentUser, users, onUserChange, onOpe
             <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">{currentUser.role}</span>
           </div>
           
-          <div className="relative group">
-            <select 
-              value={currentUser.id}
-              onChange={(e) => {
-                const found = users.find(u => u.id === e.target.value);
-                if (found) onUserChange(found);
-              }}
-              className="bg-slate-100 border-none rounded-lg px-3 py-2 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none pr-8"
-            >
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-              ))}
-            </select>
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+          {/* Admin can switch users without re-login */}
+          {currentUser.role === UserRole.ADMIN && (
+            <div className="relative group">
+              <select 
+                value={currentUser.id}
+                onChange={(e) => {
+                  const found = users.find(u => u.id === e.target.value);
+                  if (found) onUserChange(found);
+                }}
+                className="bg-slate-100 border-none rounded-lg px-3 py-2 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none pr-8"
+              >
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                ))}
+              </select>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
-          </div>
+          )}
+
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-2 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition-all"
+            title="Sign out"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
         </div>
       </div>
     </header>

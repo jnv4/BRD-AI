@@ -106,10 +106,10 @@ const App: React.FC = () => {
     setNotifications(prev => [newNote, ...prev]);
   };
 
-  const handleCreateBRD = async (name: string, questions: string[], answers: string[]): Promise<boolean> => {
+  const handleCreateBRD = async (name: string, questions: string[], answers: string[], remarks?: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const generated = await generateBRDContent(name, questions, answers);
+      const generated = await generateBRDContent(name, questions, answers, remarks);
       const newBrd: BRD = {
         id: generateId(),
         projectName: name,
@@ -301,8 +301,29 @@ const App: React.FC = () => {
         onMarkAsRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))}
       />
       
-      <main className="flex-1 overflow-hidden flex">
-        <aside className="w-80 border-r bg-white overflow-y-auto hidden md:block">
+      <main className="flex-1 overflow-hidden flex flex-col md:flex-row">
+        {/* Mobile BRD List Toggle */}
+        <div className="md:hidden bg-white border-b p-3">
+          <details className="group">
+            <summary className="flex items-center justify-between cursor-pointer list-none">
+              <span className="text-sm font-bold text-slate-700">Projects Menu</span>
+              <svg className="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="mt-2 max-h-[50vh] overflow-y-auto">
+              <BRDList 
+                brds={brds} 
+                activeId={activeBrdId} 
+                onSelect={setActiveBrdId} 
+                onCreate={handleCreateBRD}
+                isLoading={isLoading}
+              />
+            </div>
+          </details>
+        </div>
+
+        <aside className="w-80 border-r bg-white overflow-y-auto hidden md:block flex-shrink-0">
           <BRDList 
             brds={brds} 
             activeId={activeBrdId} 
@@ -312,7 +333,7 @@ const App: React.FC = () => {
           />
         </aside>
 
-        <section className="flex-1 overflow-y-auto p-4 md:p-8">
+        <section className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8">
           {activeBrd ? (
             <BRDEditor 
               brd={activeBrd} 
@@ -329,15 +350,15 @@ const App: React.FC = () => {
               currentUser={currentUser}
             />
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400">
-              <div className="bg-white p-12 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center max-w-sm text-center">
-                <div className="bg-slate-50 p-6 rounded-full mb-6">
-                  <svg className="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 px-4">
+              <div className="bg-white p-6 sm:p-8 md:p-12 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center max-w-sm text-center">
+                <div className="bg-slate-50 p-4 sm:p-6 rounded-full mb-4 sm:mb-6">
+                  <svg className="w-8 h-8 sm:w-12 sm:h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold text-slate-800 mb-2">Welcome to BRD Architect</h3>
-                <p className="text-sm leading-relaxed">Select an existing project from the sidebar to track status or click <span className="font-bold text-indigo-600">"New BRD"</span> to start.</p>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-2">Welcome to BRD Architect</h3>
+                <p className="text-xs sm:text-sm leading-relaxed">Select a project <span className="hidden md:inline">from the sidebar</span> or click <span className="font-bold text-indigo-600">"New BRD"</span> to start.</p>
               </div>
             </div>
           )}

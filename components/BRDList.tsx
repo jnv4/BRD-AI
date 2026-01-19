@@ -7,7 +7,7 @@ interface BRDListProps {
   brds: BRD[];
   activeId: string | null;
   onSelect: (id: string) => void;
-  onCreate: (name: string, questions: string[], answers: string[]) => Promise<boolean>;
+  onCreate: (name: string, questions: string[], answers: string[], remarks?: string) => Promise<boolean>;
   isLoading: boolean;
 }
 
@@ -17,6 +17,7 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
   const [isCreating, setIsCreating] = useState(false);
   const [step, setStep] = useState<WizardStep>('NAME');
   const [newName, setNewName] = useState("");
+  const [remarks, setRemarks] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   const [isFetchingQuestions, setIsFetchingQuestions] = useState(false);
@@ -44,7 +45,7 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
     if (!allAnswered) return;
 
     setStep('GENERATING');
-    const success = await onCreate(newName, questions, answers);
+    const success = await onCreate(newName, questions, answers, remarks.trim() || undefined);
     if (success) {
       resetForm();
     } else {
@@ -56,6 +57,7 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
     setIsCreating(false);
     setStep('NAME');
     setNewName("");
+    setRemarks("");
     setQuestions([]);
     setAnswers([]);
   };
@@ -76,12 +78,12 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
   const progressPercentage = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
       {!isCreating && (
         <button 
           onClick={() => setIsCreating(true)}
           disabled={isLoading}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md"
+          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md text-sm"
         >
           {isLoading ? (
             <span className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
@@ -95,7 +97,7 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
       )}
 
       {isCreating && (
-        <div className="bg-white p-5 rounded-2xl border-2 border-indigo-500 shadow-xl space-y-4 animate-in zoom-in-95 duration-200">
+        <div className="bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl border-2 border-indigo-500 shadow-xl space-y-3 sm:space-y-4 animate-in zoom-in-95 duration-200">
           {step === 'NAME' && (
             <form onSubmit={handleStartQuestions} className="space-y-4">
               <div className="flex items-center justify-between">
@@ -113,6 +115,20 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                 />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Custom Instructions</label>
+                  <span className="text-[8px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full font-medium">OPTIONAL</span>
+                </div>
+                <textarea 
+                  disabled={isFetchingQuestions}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none h-20"
+                  placeholder="Add any specific requirements, preferences, or context to customize your BRD... (e.g., 'Focus on mobile-first design', 'Include integration with Salesforce', 'Target audience is healthcare professionals')"
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                />
+                <p className="text-[9px] text-slate-400 mt-1 italic">These instructions will be used to tailor the generated BRD to your specific needs.</p>
               </div>
               <div className="flex gap-2 pt-2">
                 <button 
@@ -234,10 +250,10 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
       )}
 
       <div className="space-y-2 pt-2">
-        <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Project Registry</h2>
+        <h2 className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Project Registry</h2>
         {brds.length === 0 && !isCreating && (
-          <div className="p-8 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100">
-             <p className="text-xs text-slate-400 font-medium">No projects found. Click "New BRD" to begin your journey.</p>
+          <div className="p-6 sm:p-8 text-center bg-slate-50/50 rounded-xl sm:rounded-2xl border-2 border-dashed border-slate-100">
+             <p className="text-[10px] sm:text-xs text-slate-400 font-medium">No projects found. Click "New BRD" to begin.</p>
           </div>
         )}
         {brds.map(brd => (
@@ -245,35 +261,41 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
             key={brd.id}
             disabled={isLoading}
             onClick={() => onSelect(brd.id)}
-            className={`w-full text-left p-4 rounded-xl transition-all border ${
+            className={`w-full text-left p-3 sm:p-4 rounded-lg sm:rounded-xl transition-all border ${
               activeId === brd.id 
                 ? 'bg-white border-indigo-200 shadow-md ring-1 ring-indigo-50' 
                 : 'hover:bg-white hover:border-slate-200 border-transparent'
             } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <div className="flex justify-between items-start mb-1">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-800 line-clamp-1 text-sm">{brd.projectName}</h3>
+            <div className="flex justify-between items-start mb-1 gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <h3 className="font-bold text-slate-800 line-clamp-1 text-xs sm:text-sm">{brd.projectName}</h3>
                 {brd.isVerified && (
-                  <svg className="w-4 h-4 text-teal-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" title="AI Verified">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" title="AI Verified">
                     <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                 )}
               </div>
-              <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">v{brd.version}</span>
+              <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 bg-slate-100 px-1 sm:px-1.5 py-0.5 rounded flex-shrink-0">v{brd.version}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded-md ${getStatusColor(brd.status)}`}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <span className={`text-[8px] sm:text-[9px] uppercase font-bold px-1.5 sm:px-2 py-0.5 rounded-md whitespace-nowrap ${getStatusColor(brd.status)}`}>
                   {brd.status}
                 </span>
-                {brd.audit && brd.status === BRDStatus.PENDING_VERIFICATION && (
-                  <span className="text-[9px] font-bold text-purple-500">
-                    Score: {brd.audit.overallScore}
+                {brd.audit && (
+                  <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                    (brd.audit.overallScore || brd.audit.businessValueScore) >= 75 
+                      ? 'bg-emerald-100 text-emerald-700' 
+                      : (brd.audit.overallScore || brd.audit.businessValueScore) >= 50 
+                        ? 'bg-amber-100 text-amber-700' 
+                        : 'bg-rose-100 text-rose-700'
+                  }`}>
+                    {brd.audit.overallScore || brd.audit.businessValueScore}/100
                   </span>
                 )}
               </div>
-              <span className="text-[9px] text-slate-400 font-medium">
+              <span className="text-[8px] sm:text-[9px] text-slate-400 font-medium flex-shrink-0">
                 {new Date(brd.lastModified).toLocaleDateString()}
               </span>
             </div>

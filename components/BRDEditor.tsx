@@ -81,11 +81,11 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
     
     const element = brdDocRef.current;
     const opt = {
-      margin: [10, 10, 10, 10] as [number, number, number, number],
+      margin: [8, 8, 8, 8] as [number, number, number, number],
       filename: `${brd.projectName.replace(/[^a-zA-Z0-9]/g, '_')}_BRD_v${brd.version}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
+      image: { type: 'jpeg' as const, quality: 0.95 },
       html2canvas: { 
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         letterRendering: true,
         backgroundColor: '#ffffff'
@@ -94,7 +94,8 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
         unit: 'mm' as const, 
         format: 'a4' as const, 
         orientation: 'portrait' as const
-      }
+      },
+      pagebreak: { mode: 'avoid-all' as const }
     };
     
     html2pdf().set(opt).from(element).save();
@@ -167,66 +168,65 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
   };
 
   const statusInfo = getStatusDisplay(brd.status);
-  const approvalLogs = brd.logs.filter(log => log.action.toLowerCase().includes('approved'));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-24">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 md:space-y-8 pb-16 sm:pb-24">
       {/* Dynamic Status Dashboard */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-6 no-print">
-        <div className="flex items-center gap-4">
-          <div className={`${statusInfo.color} p-4 rounded-xl text-white shadow-lg`}>
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 flex flex-col gap-4 sm:gap-6 no-print">
+        <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+          <div className={`${statusInfo.color} p-2.5 sm:p-4 rounded-lg sm:rounded-xl text-white shadow-lg flex-shrink-0`}>
+            <svg className="w-5 h-5 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase ${statusInfo.color}`}>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1">
+              <span className={`px-1.5 sm:px-2 py-0.5 rounded text-[8px] sm:text-[10px] font-bold text-white uppercase ${statusInfo.color}`}>
                 {statusInfo.label}
               </span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">VERSION {brd.version}</span>
+              <span className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">v{brd.version}</span>
             </div>
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">{brd.projectName}</h2>
-            <p className="text-xs text-slate-500 font-medium">Currently: {statusInfo.next}</p>
+            <h2 className="text-base sm:text-xl font-bold text-slate-800 tracking-tight truncate">{brd.projectName}</h2>
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">Currently: {statusInfo.next}</p>
           </div>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
           {brd.status === BRDStatus.APPROVED && (
             <button 
               onClick={handleDownloadPDF}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md flex items-center gap-2"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all shadow-md flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm flex-1 sm:flex-none justify-center"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Download PDF
+              <span className="hidden xs:inline">Download</span> PDF
             </button>
           )}
 
           {/* Draft state - Start Verification or Skip */}
           {brd.status === BRDStatus.DRAFT && !isEditing && (
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
               <button 
                 onClick={() => onUpdateBRD({ status: BRDStatus.PENDING_VERIFICATION })}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md flex items-center gap-2"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all shadow-md flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm flex-1 sm:flex-none justify-center"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                AI Verification
+                AI Verify
               </button>
               <button 
                 onClick={() => {
                   onUpdateBRD({ isVerified: false });
                   onAction("Submitted for Approval (without audit)", BRDStatus.BUSINESS_REVIEW);
                 }}
-                className="bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2"
+                className="bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm flex-1 sm:flex-none justify-center"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                 </svg>
-                Skip & Submit
+                Skip
               </button>
             </div>
           )}
@@ -235,61 +235,61 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
           {brd.status === BRDStatus.VERIFIED && (
             <button 
               onClick={handleSubmitForApproval}
-              className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md flex items-center gap-2"
+              className="bg-teal-600 hover:bg-teal-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all shadow-md flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm flex-1 sm:flex-none justify-center"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
-              Submit for Approval
+              Submit
             </button>
           )}
 
           {brd.status === BRDStatus.REJECTED ? (
             <button 
               onClick={onRevise}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md hover:shadow-indigo-100 flex items-center gap-2"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all shadow-md hover:shadow-indigo-100 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm flex-1 sm:flex-none justify-center"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Start Revision
+              Revise
             </button>
           ) : (
             <>
               {!isEditing && (brd.status !== BRDStatus.APPROVED) && (brd.status !== BRDStatus.PENDING_VERIFICATION) && (
                 <button 
                   onClick={() => setIsEditing(true)}
-                  className="bg-white border-2 border-slate-100 hover:border-slate-200 text-slate-700 px-6 py-2.5 rounded-xl font-bold transition-all"
+                  className="bg-white border-2 border-slate-100 hover:border-slate-200 text-slate-700 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all text-xs sm:text-sm"
                 >
-                  Edit Content
+                  Edit
                 </button>
               )}
               {isEditing && (
                 <button 
                   onClick={handleSave}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all shadow-md text-xs sm:text-sm"
                 >
-                  Save Changes
+                  Save
                 </button>
               )}
               {canApprove && !isEditing && (
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
                   <button 
                     onClick={() => setRejectionModalOpen(true)}
-                    className="bg-white border-2 border-rose-100 text-rose-600 hover:bg-rose-50 px-6 py-2.5 rounded-xl font-bold transition-all"
+                    className="bg-white border-2 border-rose-100 text-rose-600 hover:bg-rose-50 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all text-xs sm:text-sm flex-1 sm:flex-none"
                   >
                     Reject
                   </button>
                   <button 
                     onClick={() => onAction("Approved Phase", nextStatus(brd.status))}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all shadow-md text-xs sm:text-sm flex-1 sm:flex-none"
                   >
                     Approve
                   </button>
                 </div>
               )}
               {!canApprove && !isEditing && brd.status !== BRDStatus.APPROVED && brd.status !== BRDStatus.REJECTED && brd.status !== BRDStatus.DRAFT && brd.status !== BRDStatus.PENDING_VERIFICATION && brd.status !== BRDStatus.VERIFIED && (
-                <div className="flex items-center px-4 py-2 bg-slate-100 text-slate-400 rounded-xl text-xs font-bold italic border border-slate-200 cursor-help" title="Only the assigned stakeholder role can approve this phase. Switch user identity to proceed.">
+                <div className="flex items-center px-2 sm:px-4 py-1.5 sm:py-2 bg-slate-100 text-slate-400 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold italic border border-slate-200 cursor-help" title="Only the assigned stakeholder role can approve this phase. Switch user identity to proceed.">
                   Waiting for {statusInfo.label.replace('PENDING ', '')}
                 </div>
               )}
@@ -300,23 +300,23 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
       {/* Rejection Alert */}
       {brd.status === BRDStatus.REJECTED && (
-        <div className="bg-rose-50 border-2 border-rose-100 p-6 rounded-2xl flex gap-5 animate-in slide-in-from-top-4 duration-300 no-print">
-          <div className="bg-rose-100 text-rose-600 p-3 rounded-xl h-fit">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-rose-50 border-2 border-rose-100 p-4 sm:p-6 rounded-xl sm:rounded-2xl flex gap-3 sm:gap-5 animate-in slide-in-from-top-4 duration-300 no-print">
+          <div className="bg-rose-100 text-rose-600 p-2 sm:p-3 rounded-lg sm:rounded-xl h-fit flex-shrink-0">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <div>
-            <h4 className="text-rose-800 font-bold text-lg mb-1">BRD Requires Changes</h4>
-            <p className="text-rose-700 text-sm leading-relaxed font-medium">Feedback: "{brd.rejectionComment}"</p>
-            <button onClick={onRevise} className="mt-3 text-rose-800 text-xs font-bold underline hover:no-underline">CREATE NEW VERSION NOW</button>
+          <div className="min-w-0">
+            <h4 className="text-rose-800 font-bold text-base sm:text-lg mb-1">BRD Requires Changes</h4>
+            <p className="text-rose-700 text-xs sm:text-sm leading-relaxed font-medium break-words">Feedback: "{brd.rejectionComment}"</p>
+            <button onClick={onRevise} className="mt-2 sm:mt-3 text-rose-800 text-[10px] sm:text-xs font-bold underline hover:no-underline">CREATE NEW VERSION</button>
           </div>
         </div>
       )}
 
       {/* Progress Tracker */}
-      <div className="bg-white p-10 rounded-2xl shadow-sm border border-slate-200 no-print">
-        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-10 text-center">Visual Progress Tracker</h3>
+      <div className="bg-white p-4 sm:p-6 md:p-10 rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 no-print overflow-hidden">
+        <h3 className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 sm:mb-6 md:mb-10 text-center">Progress Tracker</h3>
         <WorkflowTimeline currentStatus={brd.status} />
       </div>
 
@@ -351,310 +351,194 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
       {/* Verified Success Banner */}
       {brd.status === BRDStatus.VERIFIED && (
-        <div className="bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-100 p-6 rounded-2xl flex gap-5 no-print">
-          <div className="bg-teal-100 text-teal-600 p-3 rounded-xl h-fit">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-100 p-4 sm:p-6 rounded-xl sm:rounded-2xl flex gap-3 sm:gap-5 no-print">
+          <div className="bg-teal-100 text-teal-600 p-2 sm:p-3 rounded-lg sm:rounded-xl h-fit flex-shrink-0">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <div>
-            <h4 className="text-teal-800 font-bold text-lg mb-1">BRD Verified & Ready</h4>
-            <p className="text-teal-700 text-sm leading-relaxed font-medium">
-              Click "Submit for Approval" above to begin the stakeholder approval workflow.
+          <div className="min-w-0">
+            <h4 className="text-teal-800 font-bold text-base sm:text-lg mb-1">BRD Verified & Ready</h4>
+            <p className="text-teal-700 text-xs sm:text-sm leading-relaxed font-medium">
+              Click "Submit" above to begin approval workflow.
             </p>
           </div>
         </div>
       )}
 
       {/* The BRD Document */}
-      <div ref={brdDocRef} className="bg-white p-12 rounded-2xl shadow-lg border border-slate-100 space-y-12 min-h-[1000px] relative overflow-hidden brd-doc-container">
-        {/* Document Header */}
-        <div className="border-b-4 border-indigo-600 pb-8 relative z-10">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tighter">Business Requirements</h1>
-              <p className="text-indigo-600 font-bold uppercase tracking-[0.2em] text-xs">Official Project Documentation</p>
+      <div ref={brdDocRef} className="bg-white p-6 sm:p-10 rounded-xl shadow-lg border border-slate-200 min-h-[600px] relative brd-doc-container">
+        {/* Document Title */}
+        <div className="mb-6 text-center border-b-2 border-indigo-200 pb-4">
+          <h1 className="text-xl font-bold text-slate-800 tracking-tight">{brd.projectName}</h1>
+          <p className="text-sm text-indigo-600 font-semibold mt-1">BUSINESS REQUIREMENTS DOCUMENT</p>
+        </div>
+
+        {/* Document Info Bar */}
+        <div className="mb-6 flex flex-wrap justify-between items-center text-xs bg-slate-50 px-4 py-2 rounded-lg border">
+          <div className="flex gap-4">
+            <span><b>Version:</b> {brd.version}.0</span>
+            <span><b>Date:</b> {brd.date}</span>
+            <span><b>Author:</b> {brd.preparedBy}</span>
+          </div>
+          <div className="flex gap-3">
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+              brd.content.priority === 'Must To Have' ? 'bg-rose-100 text-rose-700' : 'bg-indigo-100 text-indigo-700'
+            }`}>{brd.content.priority}</span>
+            <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold uppercase">{brd.content.category}</span>
+          </div>
+        </div>
+
+        {/* 1. Executive Summary */}
+        <div className="mb-5">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">1. Executive Summary</h2>
+          <p className="text-sm text-slate-700 leading-relaxed">{brd.content.executiveSummary}</p>
+        </div>
+
+        {/* 2. Problem Statement */}
+        <div className="mb-5">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">2. Problem Statement</h2>
+          <p className="text-sm text-slate-700 leading-relaxed">{brd.content.problemStatement}</p>
+        </div>
+
+        {/* 3. Proposed Solution */}
+        <div className="mb-5">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">3. Proposed Solution</h2>
+          <p className="text-sm text-slate-700 leading-relaxed">{brd.content.proposedSolution}</p>
+        </div>
+
+        {/* 4. Purpose */}
+        <div className="mb-5">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">4. Purpose</h2>
+          <p className="text-sm text-slate-700 leading-relaxed">{brd.content.purpose}</p>
+        </div>
+
+        {/* 5. Objectives */}
+        <div className="mb-5">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">5. Objectives</h2>
+          <ul className="space-y-2">
+            {brd.content.objectives.map((obj, i) => (
+              <li key={i} className="text-sm text-slate-700 flex items-start gap-3">
+                <span className="bg-indigo-100 text-indigo-700 font-bold text-xs w-5 h-5 rounded flex items-center justify-center flex-shrink-0">{i+1}</span>
+                <span>{obj}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* 6. Scope */}
+        <div className="mb-5">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">6. Scope</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h4 className="text-xs font-bold text-emerald-700 uppercase mb-2">In Scope</h4>
+              <ul className="space-y-1">
+                {brd.content.scopeIncluded.map((s, i) => (
+                  <li key={i} className="text-sm text-slate-700 flex gap-2">
+                    <span className="text-emerald-500">•</span> {s}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="text-right">
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Prepared By</p>
-              <p className="text-sm font-bold text-slate-800">{brd.preparedBy}</p>
-              <p className="text-xs text-slate-500">{brd.date}</p>
+            <div>
+              <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Out of Scope</h4>
+              <ul className="space-y-1">
+                {brd.content.scopeExcluded.map((s, i) => (
+                  <li key={i} className="text-sm text-slate-500 flex gap-2">
+                    <span>•</span> {s}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
 
-        {/* Classification Section */}
-        <Section title="Classification & Priority">
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Project Priority</label>
-              {isEditing ? (
-                <select 
-                  className="w-full p-3 border rounded-xl bg-slate-50 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500"
-                  value={editContent.priority}
-                  onChange={(e) => setEditContent({...editContent, priority: e.target.value as BRDPriority})}
-                >
-                  <option value="Must To Have">Must To Have</option>
-                  <option value="Good To Have">Good To Have</option>
-                </select>
-              ) : (
-                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-black text-xs uppercase ${
-                  brd.content.priority === 'Must To Have' 
-                    ? 'bg-rose-50 border-rose-100 text-rose-600' 
-                    : 'bg-indigo-50 border-indigo-100 text-indigo-600'
-                }`}>
-                  <div className={`w-2 h-2 rounded-full ${brd.content.priority === 'Must To Have' ? 'bg-rose-500' : 'bg-indigo-500'}`} />
-                  {brd.content.priority}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Primary Benefit Category</label>
-              {isEditing ? (
-                <select 
-                  className="w-full p-3 border rounded-xl bg-slate-50 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500"
-                  value={editContent.category}
-                  onChange={(e) => setEditContent({...editContent, category: e.target.value as BRDCategory})}
-                >
-                  <option value="Cost Saving">Cost Saving</option>
-                  <option value="Man Days Saving">Man Days Saving</option>
-                  <option value="Compliance">Compliance</option>
-                </select>
-              ) : (
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 border-2 border-slate-200 font-bold text-xs text-slate-700 uppercase">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                  {brd.content.category}
-                </div>
-              )}
-            </div>
-          </div>
-        </Section>
-
-        <Section 
-          title="1. Purpose" 
-          onAIRefine={isEditing ? () => handleAIRefine('purpose', 'text') : undefined}
-          isLoading={fieldLoading === 'purpose'}
-        >
-          {isEditing ? (
-            <textarea 
-              className="w-full p-4 border rounded-xl min-h-[150px] focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 leading-relaxed text-sm"
-              value={editContent.purpose}
-              onChange={(e) => setEditContent({...editContent, purpose: e.target.value})}
-              placeholder="Explain the 'Why' behind this project..."
-            />
-          ) : (
-            <p className="text-slate-700 leading-relaxed whitespace-pre-wrap text-sm">{brd.content.purpose}</p>
-          )}
-        </Section>
-
-        <Section 
-          title="2. Key Objectives"
-          onAIRefine={isEditing ? () => handleAIRefine('objectives', 'list') : undefined}
-          isLoading={fieldLoading === 'objectives'}
-        >
-          {isEditing ? (
-            <div className="space-y-2">
-              {editContent.objectives.map((obj, i) => (
-                <div key={i} className="flex gap-2">
-                  <input 
-                    className="flex-1 p-3 border rounded-lg text-sm"
-                    value={obj}
-                    onChange={(e) => {
-                      const newObjs = [...editContent.objectives];
-                      newObjs[i] = e.target.value;
-                      setEditContent({...editContent, objectives: newObjs});
-                    }}
-                  />
-                  <button onClick={() => {
-                    const newObjs = editContent.objectives.filter((_, idx) => idx !== i);
-                    setEditContent({...editContent, objectives: newObjs});
-                  }} className="text-rose-500 px-2 transition-transform hover:scale-125">✕</button>
-                </div>
-              ))}
-              <button 
-                onClick={() => setEditContent({...editContent, objectives: [...editContent.objectives, ""]})}
-                className="text-[10px] text-indigo-600 font-black hover:bg-indigo-50 px-3 py-1 rounded-full transition-colors"
-              >
-                + ADD OBJECTIVE
-              </button>
-            </div>
-          ) : (
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {brd.content.objectives.map((obj, i) => (
-                <li key={i} className="flex gap-3 text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <span className="text-indigo-600 font-black">0{i+1}</span>
-                  {obj}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-
-        <Section title="3. Project Scope">
-          <div className="grid md:grid-cols-2 gap-10">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
-                <h4 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">In Scope</h4>
-                {isEditing && (
-                  <button 
-                    disabled={fieldLoading === 'scopeIncluded'}
-                    onClick={() => handleAIRefine('scopeIncluded', 'list')}
-                    className="text-[9px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
-                  >
-                    ✨ AUTO-FILL
-                  </button>
-                )}
-              </div>
-              {isEditing ? (
-                <textarea 
-                  className="w-full p-4 border rounded-xl text-sm min-h-[140px] focus:ring-2 focus:ring-emerald-500"
-                  value={editContent.scopeIncluded.join('\n')}
-                  onChange={(e) => setEditContent({...editContent, scopeIncluded: e.target.value.split('\n')})}
-                  placeholder="What is included? (one per line)"
-                />
-              ) : (
-                <ul className="space-y-2 text-xs">
-                  {brd.content.scopeIncluded.map((s, i) => (
-                    <li key={i} className="flex gap-2 text-slate-600">
-                      <span className="text-emerald-500">✔</span> {s}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-rose-100 pb-2">
-                <h4 className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Out of Scope</h4>
-                {isEditing && (
-                  <button 
-                    disabled={fieldLoading === 'scopeExcluded'}
-                    onClick={() => handleAIRefine('scopeExcluded', 'list')}
-                    className="text-[9px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
-                  >
-                    ✨ AUTO-FILL
-                  </button>
-                )}
-              </div>
-              {isEditing ? (
-                <textarea 
-                  className="w-full p-4 border rounded-xl text-sm min-h-[140px] focus:ring-2 focus:ring-rose-500"
-                  value={editContent.scopeExcluded.join('\n')}
-                  onChange={(e) => setEditContent({...editContent, scopeExcluded: e.target.value.split('\n')})}
-                  placeholder="What is excluded? (one per line)"
-                />
-              ) : (
-                <ul className="space-y-2 text-xs">
-                  {brd.content.scopeExcluded.map((s, i) => (
-                    <li key={i} className="flex gap-2 text-slate-500">
-                      <span className="text-rose-300">✖</span> {s}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </Section>
-
-        <Section 
-          title="4. Stakeholders & Ownership"
-          onAIRefine={isEditing ? () => handleAIRefine('stakeholders', 'stakeholders') : undefined}
-          isLoading={fieldLoading === 'stakeholders'}
-        >
-          <div className="overflow-x-auto rounded-xl border border-slate-100">
-            <table className="w-full border-collapse">
+        {/* 7. Key Requirements */}
+        {brd.content.keyRequirements?.length > 0 && (
+          <div className="mb-5">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">7. Key Requirements</h2>
+            <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Role</th>
-                  <th className="text-left py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Primary Responsibility</th>
-                  {isEditing && <th className="w-12 px-6 no-print"></th>}
+                <tr className="bg-slate-50">
+                  <th className="text-left py-2 px-3 text-xs font-bold text-slate-600 uppercase">Requirement</th>
+                  <th className="text-left py-2 px-3 text-xs font-bold text-slate-600 uppercase">Description</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {(isEditing ? editContent.stakeholders : brd.content.stakeholders).map((s, i) => (
-                  <tr key={i} className="group transition-colors hover:bg-indigo-50/20">
-                    <td className="py-4 px-6">
-                      {isEditing ? (
-                        <input 
-                          className="w-full p-2 border rounded text-xs focus:ring-1 focus:ring-indigo-500"
-                          value={s.role}
-                          onChange={(e) => {
-                            const newS = [...editContent.stakeholders];
-                            newS[i] = {...newS[i], role: e.target.value};
-                            setEditContent({...editContent, stakeholders: newS});
-                          }}
-                        />
-                      ) : (
-                        <span className="text-sm font-bold text-slate-700">{s.role}</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-6">
-                      {isEditing ? (
-                         <input 
-                          className="w-full p-2 border rounded text-xs focus:ring-1 focus:ring-indigo-500"
-                          value={s.responsibility}
-                          onChange={(e) => {
-                            const newS = [...editContent.stakeholders];
-                            newS[i] = {...newS[i], responsibility: e.target.value};
-                            setEditContent({...editContent, stakeholders: newS});
-                          }}
-                        />
-                      ) : (
-                        <span className="text-xs text-slate-600">{s.responsibility}</span>
-                      )}
-                    </td>
-                    {isEditing && (
-                      <td className="py-4 px-6 text-center no-print">
-                        <button 
-                          onClick={() => {
-                            const newS = editContent.stakeholders.filter((_, idx) => idx !== i);
-                            setEditContent({...editContent, stakeholders: newS});
-                          }}
-                          className="text-rose-400 hover:text-rose-600"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </td>
-                    )}
+              <tbody>
+                {brd.content.keyRequirements.map((req, i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-2 px-3 font-semibold text-slate-800">{req.title}</td>
+                    <td className="py-2 px-3 text-slate-600">{req.description}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {isEditing && (
-            <button 
-              onClick={() => setEditContent({...editContent, stakeholders: [...editContent.stakeholders, {role: "", responsibility: ""}]})}
-              className="mt-4 text-[10px] font-black text-indigo-600 hover:bg-indigo-50 px-3 py-1 rounded-full transition-colors no-print"
-            >
-              + ADD STAKEHOLDER
-            </button>
-          )}
-        </Section>
-
-        {/* Approval signatures for PDF */}
-        {brd.status === BRDStatus.APPROVED && (
-          <Section title="5. Official Approvals & Signatures">
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-8 border-t-2 border-slate-50 pt-8">
-               {approvalLogs.map((log, idx) => (
-                 <div key={idx} className="space-y-4">
-                    <div className="flex justify-between items-end border-b border-slate-200 pb-1">
-                       <span className="text-xs font-bold text-slate-400">SIGNATORY {idx + 1}</span>
-                       <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Electronically Approved</span>
-                    </div>
-                    <div>
-                       <p className="text-lg font-black text-slate-800 tracking-tight italic">{log.user}</p>
-                       <p className="text-[10px] text-slate-400 font-bold uppercase">{log.action}</p>
-                       <p className="text-[10px] text-slate-400">{new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString()}</p>
-                    </div>
-                 </div>
-               ))}
-            </div>
-          </Section>
         )}
+
+        {/* 8. Success Criteria */}
+        {brd.content.successCriteria?.length > 0 && (
+          <div className="mb-5">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">8. Success Criteria</h2>
+            <ul className="space-y-2">
+              {brd.content.successCriteria.map((c, i) => (
+                <li key={i} className="text-sm text-slate-700 flex gap-2">
+                  <span className="text-emerald-600 font-bold">✓</span> {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* 9. Stakeholders */}
+        <div className="mb-5">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">9. Stakeholders</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50">
+                <th className="text-left py-2 px-3 text-xs font-bold text-slate-600 uppercase">Role</th>
+                <th className="text-left py-2 px-3 text-xs font-bold text-slate-600 uppercase">Responsibility</th>
+              </tr>
+            </thead>
+            <tbody>
+              {brd.content.stakeholders.map((s, i) => (
+                <tr key={i} className="border-b border-slate-100">
+                  <td className="py-2 px-3 font-semibold text-slate-800">{s.role}</td>
+                  <td className="py-2 px-3 text-slate-600">{s.responsibility}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 10. Key Risks */}
+        {brd.content.keyRisks?.length > 0 && (
+          <div className="mb-5">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">10. Key Risks & Mitigation</h2>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-amber-50">
+                  <th className="text-left py-2 px-3 text-xs font-bold text-amber-700 uppercase">Risk</th>
+                  <th className="text-left py-2 px-3 text-xs font-bold text-amber-700 uppercase">Mitigation Strategy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {brd.content.keyRisks.map((r, i) => (
+                  <tr key={i} className="border-b border-amber-100">
+                    <td className="py-2 px-3 font-semibold text-slate-800">{r.risk}</td>
+                    <td className="py-2 px-3 text-slate-600">{r.mitigation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* 11. Timeline */}
+        <div className="mb-5">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">11. Estimated Timeline</h2>
+          <p className="text-sm font-semibold text-indigo-700 bg-indigo-50 inline-block px-4 py-2 rounded">{brd.content.estimatedTimeline}</p>
+        </div>
       </div>
 
       <div className="action-log-container no-print">
@@ -663,30 +547,30 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
       {/* Rejection Modal */}
       {rejectionModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 no-print">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-rose-100 p-2 rounded-lg text-rose-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 no-print">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-md w-full p-5 sm:p-8 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <div className="bg-rose-100 p-1.5 sm:p-2 rounded-lg text-rose-600">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-slate-800">Reject this Phase?</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-800">Reject this Phase?</h3>
             </div>
-            <p className="text-slate-500 text-sm mb-6">Please provide constructive feedback so the initiator can correct the requirements.</p>
+            <p className="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6">Please provide constructive feedback so the initiator can correct the requirements.</p>
             <textarea 
               autoFocus
-              className="w-full p-4 border-2 border-slate-100 rounded-2xl h-32 mb-6 focus:border-rose-200 outline-none text-sm transition-all"
+              className="w-full p-3 sm:p-4 border-2 border-slate-100 rounded-xl sm:rounded-2xl h-24 sm:h-32 mb-4 sm:mb-6 focus:border-rose-200 outline-none text-xs sm:text-sm transition-all"
               placeholder="e.g. Stakeholders missing for DevOps phase..."
               value={rejectionComment}
               onChange={(e) => setRejectionComment(e.target.value)}
             />
-            <div className="flex gap-4">
-              <button onClick={() => setRejectionModalOpen(false)} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors">Go Back</button>
+            <div className="flex gap-2 sm:gap-4">
+              <button onClick={() => setRejectionModalOpen(false)} className="flex-1 py-2.5 sm:py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-lg sm:rounded-xl transition-colors text-sm">Go Back</button>
               <button 
                 disabled={!rejectionComment} 
                 onClick={handleReject} 
-                className="flex-1 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 disabled:bg-rose-200 disabled:cursor-not-allowed shadow-lg shadow-rose-100 transition-all"
+                className="flex-1 py-2.5 sm:py-3 bg-rose-600 text-white font-bold rounded-lg sm:rounded-xl hover:bg-rose-700 disabled:bg-rose-200 disabled:cursor-not-allowed shadow-lg shadow-rose-100 transition-all text-sm"
               >
                 Reject BRD
               </button>
@@ -704,29 +588,29 @@ const Section: React.FC<{
   onAIRefine?: () => void,
   isLoading?: boolean
 }> = ({ title, children, onAIRefine, isLoading }) => (
-  <section className="space-y-6">
-    <div className="flex items-center justify-between border-b-2 border-slate-50 pb-2">
-      <h2 className="text-xl font-black text-slate-900 tracking-tight">{title}</h2>
+  <section className="space-y-3 sm:space-y-4 md:space-y-6">
+    <div className="flex items-center justify-between border-b-2 border-slate-50 pb-2 gap-2">
+      <h2 className="text-base sm:text-lg md:text-xl font-black text-slate-900 tracking-tight">{title}</h2>
       {onAIRefine && (
         <button 
           onClick={onAIRefine}
           disabled={isLoading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-[10px] font-black hover:bg-indigo-100 transition-all border border-indigo-100 shadow-sm disabled:opacity-50 no-print"
+          className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-[9px] sm:text-[10px] font-black hover:bg-indigo-100 transition-all border border-indigo-100 shadow-sm disabled:opacity-50 no-print flex-shrink-0"
         >
           {isLoading ? (
-            <span className="animate-spin rounded-full h-3 w-3 border-2 border-indigo-600 border-t-transparent" />
+            <span className="animate-spin rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 border-2 border-indigo-600 border-t-transparent" />
           ) : (
             <>
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              AI REFINE
+              <span className="hidden xs:inline">AI</span> REFINE
             </>
           )}
         </button>
       )}
     </div>
-    <div className="pl-2">
+    <div className="pl-0 sm:pl-2">
       {children}
     </div>
   </section>

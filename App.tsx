@@ -17,6 +17,9 @@ const generateId = () => {
   }
 };
 
+// Version for cache invalidation - increment when credentials change
+const USERS_VERSION = 'v2';
+
 const DEFAULT_USERS: AppUser[] = [
   { id: '1', name: 'Shreya Tivrekar', role: UserRole.PROJECT_MANAGER, email: 'pm@brd.com', password: 'pm123' },
   { id: '2', name: 'Admin User', role: UserRole.ADMIN, email: 'admin@brd.com', password: 'admin123' },
@@ -43,18 +46,48 @@ const App: React.FC = () => {
     const savedNotes = localStorage.getItem('brd_notifications');
     if (savedNotes) setNotifications(JSON.parse(savedNotes));
 
+    // Check users version to handle stale cache after deployment
+    const savedUsersVersion = localStorage.getItem('brd_users_version');
     const savedUsers = localStorage.getItem('brd_users');
-    if (savedUsers) setUsers(JSON.parse(savedUsers));
+    
+    let loadedUsers = DEFAULT_USERS;
+    
+    if (savedUsersVersion === USERS_VERSION && savedUsers) {
+      // Version matches, safe to use cached users
+      try {
+        const parsed = JSON.parse(savedUsers);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          loadedUsers = parsed;
+        }
+      } catch (e) {
+        console.warn('[App] Failed to parse saved users, using defaults');
+      }
+    } else if (savedUsers && savedUsersVersion !== USERS_VERSION) {
+      // Version mismatch - clear stale data to fix login issues
+      console.log('[App] Users version mismatch, resetting to defaults');
+      localStorage.removeItem('brd_users');
+      localStorage.removeItem('brd_session');
+      localStorage.setItem('brd_users_version', USERS_VERSION);
+    } else {
+      // First time - set version
+      localStorage.setItem('brd_users_version', USERS_VERSION);
+    }
+    
+    setUsers(loadedUsers);
 
     // Check for authenticated session
     const savedSession = localStorage.getItem('brd_session');
     if (savedSession) {
-      const session = JSON.parse(savedSession);
-      const savedUsersList = savedUsers ? JSON.parse(savedUsers) : DEFAULT_USERS;
-      const sessionUser = savedUsersList.find((u: AppUser) => u.id === session.userId);
-      if (sessionUser) {
-        setCurrentUser(sessionUser);
-        setIsAuthenticated(true);
+      try {
+        const session = JSON.parse(savedSession);
+        const sessionUser = loadedUsers.find((u: AppUser) => u.id === session.userId);
+        if (sessionUser) {
+          setCurrentUser(sessionUser);
+          setIsAuthenticated(true);
+        }
+      } catch (e) {
+        console.warn('[App] Failed to restore session');
+        localStorage.removeItem('brd_session');
       }
     }
   }, []);
@@ -69,6 +102,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('brd_users', JSON.stringify(users));
+    localStorage.setItem('brd_users_version', USERS_VERSION);
   }, [users]);
 
   useEffect(() => {

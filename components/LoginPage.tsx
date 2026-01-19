@@ -15,22 +15,57 @@ const DEMO_CREDENTIALS = [
   { role: 'Team Lead', email: 'lead@brd.com', password: 'lead123', description: 'Technical review & sign-off', color: 'cyan' },
 ];
 
+// Normalize credentials for comparison (handles whitespace/case issues from cache or autofill)
+const normalizeEmail = (e: string) => (e || '').trim().toLowerCase();
+const normalizePassword = (p: string) => (p || '').trim();
+
 const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
 
+  // Find user with normalized comparison to handle cache/autofill edge cases
+  const findUser = (inputEmail: string, inputPassword: string): AppUser | undefined => {
+    const normEmail = normalizeEmail(inputEmail);
+    const normPassword = normalizePassword(inputPassword);
+    
+    // Debug logging for production troubleshooting (safe - no passwords logged)
+    if (process.env.NODE_ENV === 'production' || !users.length) {
+      console.log('[Login Debug] Attempting login:', { 
+        inputEmail: normEmail, 
+        usersCount: users.length,
+        availableEmails: users.map(u => normalizeEmail(u.email))
+      });
+    }
+    
+    return users.find(u => 
+      normalizeEmail(u.email) === normEmail && 
+      normalizePassword(u.password) === normPassword
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
-    const user = users.find(u => u.email === email && u.password === password);
+    const user = findUser(email, password);
     
     if (user) {
       onLogin(user);
     } else {
-      setError('Invalid credentials. Check the demo credentials below.');
+      // Enhanced error with debug hint for production issues
+      const normEmail = normalizeEmail(email);
+      const emailExists = users.some(u => normalizeEmail(u.email) === normEmail);
+      
+      if (!users.length) {
+        setError('No users loaded. Try clearing browser cache and refreshing.');
+      } else if (!emailExists) {
+        setError('Email not found. Check the demo credentials below.');
+      } else {
+        setError('Invalid password. Check the demo credentials below.');
+      }
+      
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
     }
@@ -38,13 +73,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
 
   const handleQuickLogin = (demoEmail: string, demoPassword: string) => {
     // Directly find and login user to avoid race conditions with async state updates
-    const user = users.find(u => u.email === demoEmail && u.password === demoPassword);
+    const user = findUser(demoEmail, demoPassword);
     if (user) {
       onLogin(user);
     } else {
+      // If users from localStorage don't match demo creds, log for debugging
+      console.warn('[Login Debug] Quick login failed - user mismatch. Demo:', demoEmail, 'Available:', users.map(u => u.email));
       // Fallback: set fields for manual submit
       setEmail(demoEmail);
       setPassword(demoPassword);
+      setError('Credentials mismatch. Try clearing site data (Ctrl+Shift+Del) and refresh.');
     }
   };
 

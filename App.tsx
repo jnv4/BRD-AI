@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BRD, BRDStatus, UserRole, LogEntry, NotificationItem, AppUser, BRDContent } from './types';
 import { generateBRDContent } from './services/geminiService';
+import { userApi, brdApi, alertApi, isApiAvailable } from './services/apiService';
 import BRDList from './components/BRDList';
 import BRDEditor from './components/BRDEditor';
 import Header from './components/Header';
@@ -17,9 +18,7 @@ const generateId = () => {
   }
 };
 
-// Version for cache invalidation - increment when credentials change
-const USERS_VERSION = 'v2';
-
+// Fallback users when API is not available
 const DEFAULT_USERS: AppUser[] = [
   { id: '1', name: 'Shreya Tivrekar', role: UserRole.PROJECT_MANAGER, email: 'pm@brd.com', password: 'pm123' },
   { id: '2', name: 'Admin User', role: UserRole.ADMIN, email: 'admin@brd.com', password: 'admin123' },
@@ -32,86 +31,153 @@ const App: React.FC = () => {
   const [brds, setBrds] = useState<BRD[]>([]);
   const [activeBrdId, setActiveBrdId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [users, setUsers] = useState<AppUser[]>(DEFAULT_USERS);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [useDatabase, setUseDatabase] = useState(false);
 
+  // Load all data from database on mount
   useEffect(() => {
-    const savedBrds = localStorage.getItem('brd_data');
-    if (savedBrds) setBrds(JSON.parse(savedBrds));
-    
-    const savedNotes = localStorage.getItem('brd_notifications');
-    if (savedNotes) setNotifications(JSON.parse(savedNotes));
-
-    // Check users version to handle stale cache after deployment
-    const savedUsersVersion = localStorage.getItem('brd_users_version');
-    const savedUsers = localStorage.getItem('brd_users');
-    
-    let loadedUsers = DEFAULT_USERS;
-    
-    if (savedUsersVersion === USERS_VERSION && savedUsers) {
-      // Version matches, safe to use cached users
-      try {
-        const parsed = JSON.parse(savedUsers);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          loadedUsers = parsed;
+    const initializeApp = async () => {
+      setIsInitializing(true);
+      
+      // Check if API/Database is available
+      const apiAvailable = await isApiAvailable();
+      setUseDatabase(apiAvailable);
+      
+      if (apiAvailable) {
+        console.log('✅ Database connected - using PostgreSQL');
+        try {
+          // Load users from database
+          const dbUsers = await userApi.getAll();
+          if (dbUsers.length > 0) {
+            setUsers(dbUsers.map(u => ({
+              id: u.id,
+              name: u.name,
+              email: u.email,
+              role: u.role as UserRole,
+              password: '', // Password not returned from API
+            })));
+          }
+          
+          // Load BRDs from database
+          const dbBrds = await brdApi.getAll();
+          setBrds(dbBrds);
+          
+          // Load alerts from database
+          const dbAlerts = await alertApi.getAll();
+          setNotifications(dbAlerts.map(a => ({
+            id: a.id,
+            title: a.title,
+            message: a.message,
+            type: a.type,
+            timestamp: a.timestamp,
+            isRead: a.isRead,
+          })));
+          
+        } catch (error) {
+          console.error('Error loading from database:', error);
+          showToast('Failed to load data from database', 'error');
         }
-      } catch (e) {
-        console.warn('[App] Failed to parse saved users, using defaults');
-      }
-    } else if (savedUsers && savedUsersVersion !== USERS_VERSION) {
-      // Version mismatch - clear stale data to fix login issues
-      console.log('[App] Users version mismatch, resetting to defaults');
-      localStorage.removeItem('brd_users');
-      localStorage.removeItem('brd_session');
-      localStorage.setItem('brd_users_version', USERS_VERSION);
-    } else {
-      // First time - set version
-      localStorage.setItem('brd_users_version', USERS_VERSION);
-    }
-    
-    setUsers(loadedUsers);
-
-    // Check for authenticated session
-    const savedSession = localStorage.getItem('brd_session');
-    if (savedSession) {
-      try {
-        const session = JSON.parse(savedSession);
-        const sessionUser = loadedUsers.find((u: AppUser) => u.id === session.userId);
-        if (sessionUser) {
-          setCurrentUser(sessionUser);
-          setIsAuthenticated(true);
+      } else {
+        console.log('⚠️ Database not available - using localStorage');
+        // Fallback to localStorage
+        const savedBrds = localStorage.getItem('brd_data');
+        if (savedBrds) setBrds(JSON.parse(savedBrds));
+        
+        const savedNotes = localStorage.getItem('brd_notifications');
+        if (savedNotes) setNotifications(JSON.parse(savedNotes));
+        
+        const savedUsers = localStorage.getItem('brd_users');
+        if (savedUsers) {
+          try {
+            const parsed = JSON.parse(savedUsers);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setUsers(parsed);
+            }
+          } catch (e) {
+            console.warn('Failed to parse saved users');
+          }
         }
-      } catch (e) {
-        console.warn('[App] Failed to restore session');
-        localStorage.removeItem('brd_session');
       }
-    }
+
+      // Check for authenticated session
+      const savedSession = localStorage.getItem('brd_session');
+      if (savedSession) {
+        try {
+          const session = JSON.parse(savedSession);
+          // For database mode, fetch user from API
+          if (apiAvailable) {
+            try {
+              const sessionUser = await userApi.getById(session.userId);
+              if (sessionUser) {
+                setCurrentUser({
+                  id: sessionUser.id,
+                  name: sessionUser.name,
+                  email: sessionUser.email,
+                  role: sessionUser.role as UserRole,
+                  password: '',
+                });
+                setIsAuthenticated(true);
+              }
+            } catch {
+              localStorage.removeItem('brd_session');
+            }
+          } else {
+            // localStorage mode - find user in local state
+            const savedUsersData = localStorage.getItem('brd_users');
+            const allUsers = savedUsersData ? JSON.parse(savedUsersData) : DEFAULT_USERS;
+            const sessionUser = allUsers.find((u: AppUser) => u.id === session.userId);
+            if (sessionUser) {
+              setCurrentUser(sessionUser);
+              setIsAuthenticated(true);
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to restore session');
+          localStorage.removeItem('brd_session');
+        }
+      }
+      
+      setIsInitializing(false);
+    };
+
+    initializeApp();
   }, []);
 
+  // Sync BRDs to localStorage when database is not available
   useEffect(() => {
-    localStorage.setItem('brd_data', JSON.stringify(brds));
-  }, [brds]);
+    if (!useDatabase && !isInitializing) {
+      localStorage.setItem('brd_data', JSON.stringify(brds));
+    }
+  }, [brds, useDatabase, isInitializing]);
 
+  // Sync notifications to localStorage when database is not available
   useEffect(() => {
-    localStorage.setItem('brd_notifications', JSON.stringify(notifications));
-  }, [notifications]);
+    if (!useDatabase && !isInitializing) {
+      localStorage.setItem('brd_notifications', JSON.stringify(notifications));
+    }
+  }, [notifications, useDatabase, isInitializing]);
 
+  // Sync users to localStorage when database is not available
   useEffect(() => {
-    localStorage.setItem('brd_users', JSON.stringify(users));
-    localStorage.setItem('brd_users_version', USERS_VERSION);
-  }, [users]);
+    if (!useDatabase && !isInitializing) {
+      localStorage.setItem('brd_users', JSON.stringify(users));
+    }
+  }, [users, useDatabase, isInitializing]);
 
+  // Save session
   useEffect(() => {
     if (isAuthenticated && currentUser) {
       localStorage.setItem('brd_session', JSON.stringify({ userId: currentUser.id, timestamp: Date.now() }));
     }
   }, [currentUser, isAuthenticated]);
 
-  const handleLogin = (user: AppUser) => {
+  const handleLogin = async (user: AppUser) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
     showToast(`Welcome back, ${user.name}!`, 'success');
@@ -128,7 +194,7 @@ const App: React.FC = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const addNotification = (title: string, message: string, type: 'success' | 'error' | 'info') => {
+  const addNotification = useCallback(async (title: string, message: string, type: 'success' | 'error' | 'info', brdId?: string) => {
     const newNote: NotificationItem = {
       id: generateId(),
       title,
@@ -137,16 +203,33 @@ const App: React.FC = () => {
       timestamp: Date.now(),
       isRead: false
     };
+    
     setNotifications(prev => [newNote, ...prev]);
-  };
+    
+    // Save to database if available
+    if (useDatabase) {
+      try {
+        await alertApi.create({
+          title,
+          message,
+          type,
+          brdId,
+          actionBy: currentUser?.name,
+        });
+      } catch (error) {
+        console.error('Failed to save alert to database:', error);
+      }
+    }
+  }, [useDatabase, currentUser]);
 
   const handleCreateBRD = async (name: string, questions: string[], answers: string[], remarks?: string): Promise<boolean> => {
     if (!currentUser) return false;
     setIsLoading(true);
     try {
       const generated = await generateBRDContent(name, questions, answers, remarks);
+      const newBrdId = generateId();
       const newBrd: BRD = {
-        id: generateId(),
+        id: newBrdId,
         projectName: name,
         preparedBy: `${currentUser.name} (${currentUser.role})`,
         date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -164,10 +247,26 @@ const App: React.FC = () => {
         isVerified: false,
         verificationHistory: []
       };
-      setBrds(prev => [newBrd, ...prev]);
-      setActiveBrdId(newBrd.id);
+      
+      // Save to database if available
+      if (useDatabase) {
+        try {
+          const savedBrd = await brdApi.create(newBrd);
+          setBrds(prev => [savedBrd, ...prev]);
+          setActiveBrdId(savedBrd.id);
+        } catch (error) {
+          console.error('Failed to save BRD to database:', error);
+          // Fallback to local state
+          setBrds(prev => [newBrd, ...prev]);
+          setActiveBrdId(newBrd.id);
+        }
+      } else {
+        setBrds(prev => [newBrd, ...prev]);
+        setActiveBrdId(newBrd.id);
+      }
+      
       showToast("BRD generated successfully!", "success");
-      addNotification("BRD Created", `New project "${name}" has been drafted and is ready for AI verification.`, "info");
+      addNotification("BRD Created", `New project "${name}" has been drafted and is ready for AI verification.`, "info", newBrdId);
       return true;
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Generation failed", "error");
@@ -177,7 +276,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateBRD = (id: string, updates: Partial<BRD>) => {
+  const handleUpdateBRD = async (id: string, updates: Partial<BRD>) => {
     const brd = brds.find(b => b.id === id);
     if (!brd || !currentUser) return;
 
@@ -199,14 +298,16 @@ const App: React.FC = () => {
         addNotification(
           "BRD Verified",
           `Project "${brd.projectName}" has passed AI verification and is ready for stakeholder approval.`,
-          "success"
+          "success",
+          id
         );
       } else if (updates.status === BRDStatus.PENDING_VERIFICATION) {
         showToast("Starting AI Verification...", "success");
         addNotification(
           "Verification Started",
           `AI audit is analyzing project "${brd.projectName}".`,
-          "info"
+          "info",
+          id
         );
       }
     }
@@ -223,7 +324,7 @@ const App: React.FC = () => {
       logs = [...logs, refineLog];
     }
 
-    updateBRD(id, { ...updates, logs });
+    await updateBRD(id, { ...updates, logs });
   };
 
   const getStatusChangeAction = (from: BRDStatus, to: BRDStatus): string => {
@@ -239,11 +340,23 @@ const App: React.FC = () => {
     }
   };
 
-  const updateBRD = (id: string, updates: Partial<BRD>) => {
-    setBrds(prev => prev.map(b => b.id === id ? { ...b, ...updates, lastModified: Date.now() } : b));
+  const updateBRD = async (id: string, updates: Partial<BRD>) => {
+    const updatedBrd = { ...brds.find(b => b.id === id)!, ...updates, lastModified: Date.now() };
+    
+    // Update local state immediately
+    setBrds(prev => prev.map(b => b.id === id ? updatedBrd : b));
+    
+    // Sync to database if available
+    if (useDatabase) {
+      try {
+        await brdApi.update(id, updates);
+      } catch (error) {
+        console.error('Failed to update BRD in database:', error);
+      }
+    }
   };
 
-  const handleAction = (id: string, action: string, newStatus: BRDStatus, comment?: string) => {
+  const handleAction = async (id: string, action: string, newStatus: BRDStatus, comment?: string) => {
     const brd = brds.find(b => b.id === id);
     if (!brd || !currentUser) return;
 
@@ -270,27 +383,39 @@ const App: React.FC = () => {
       addNotification(
         "BRD Rejected (Email Alert Simulation)", 
         `Project "${brd.projectName}" was rejected by ${currentUser.name}. Reason: ${comment}`, 
-        "error"
+        "error",
+        id
       );
     } else if (newStatus === BRDStatus.APPROVED) {
       addNotification(
         "BRD Fully Approved!", 
         `Project "${brd.projectName}" has completed the workflow and is officially approved.`, 
-        "success"
+        "success",
+        id
       );
+      
+      // Update final decision in database
+      if (useDatabase) {
+        try {
+          await brdApi.setDecision(id, 'approved');
+        } catch (error) {
+          console.error('Failed to update decision:', error);
+        }
+      }
     } else {
       addNotification(
         "Workflow Update", 
         `Project "${brd.projectName}" has moved to ${newStatus} by ${currentUser.name}.`, 
-        "info"
+        "info",
+        id
       );
     }
 
-    updateBRD(id, updates);
+    await updateBRD(id, updates);
     showToast(`BRD ${newStatus}`, "success");
   };
 
-  const handleRevise = (id: string) => {
+  const handleRevise = async (id: string) => {
     const brd = brds.find(b => b.id === id);
     if (!brd || !currentUser) return;
 
@@ -303,7 +428,7 @@ const App: React.FC = () => {
       version: newVersion
     };
 
-    updateBRD(id, {
+    await updateBRD(id, {
       version: newVersion,
       status: BRDStatus.DRAFT,
       rejectionComment: undefined,
@@ -316,11 +441,77 @@ const App: React.FC = () => {
     showToast(`Revised to Version ${newVersion}`, "success");
   };
 
+  const handleDeleteBRD = async (id: string) => {
+    const brd = brds.find(b => b.id === id);
+    if (!brd) return;
+    
+    // Remove from local state
+    setBrds(prev => prev.filter(b => b.id !== id));
+    setActiveBrdId(null);
+    
+    // Delete from database if available
+    if (useDatabase) {
+      try {
+        await brdApi.delete(id);
+      } catch (error) {
+        console.error('Failed to delete BRD from database:', error);
+      }
+    }
+    
+    showToast("BRD deleted successfully", "success");
+    addNotification("BRD Deleted", `Project "${brd.projectName}" has been removed.`, "info");
+  };
+
+  const handleClearNotifications = async () => {
+    setNotifications([]);
+    
+    if (useDatabase) {
+      try {
+        await alertApi.deleteAll();
+      } catch (error) {
+        console.error('Failed to clear alerts from database:', error);
+      }
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    
+    if (useDatabase) {
+      try {
+        await alertApi.markAsRead(id);
+      } catch (error) {
+        console.error('Failed to mark alert as read:', error);
+      }
+    }
+  };
+
+  const handleUpdateUsers = async (updated: AppUser[]) => {
+    setUsers(updated);
+    
+    // If current user was deleted, reset to first
+    if (!updated.find(u => u.id === currentUser?.id)) {
+      setCurrentUser(updated[0] || null);
+    }
+  };
+
   const activeBrd = brds.find(b => b.id === activeBrdId) || null;
+
+  // Show loading during initialization
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading BRD Architect...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show login page if not authenticated
   if (!isAuthenticated || !currentUser) {
-    return <LoginPage users={users} onLogin={handleLogin} />;
+    return <LoginPage users={users} onLogin={handleLogin} useDatabase={useDatabase} />;
   }
 
   return (
@@ -332,9 +523,14 @@ const App: React.FC = () => {
         onOpenAdmin={() => setIsAdminPanelOpen(true)}
         onLogout={handleLogout}
         notifications={notifications}
-        onClearNotifications={() => setNotifications([])}
-        onMarkAsRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))}
+        onClearNotifications={handleClearNotifications}
+        onMarkAsRead={handleMarkAsRead}
       />
+      
+      {/* Database connection indicator */}
+      <div className={`text-xs text-center py-1 ${useDatabase ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+        {useDatabase ? '🗄️ Connected to PostgreSQL Database' : '💾 Using Local Storage (Database not available)'}
+      </div>
       
       <main className="flex-1 overflow-hidden flex flex-col md:flex-row">
         {/* Mobile BRD List Toggle */}
@@ -376,12 +572,7 @@ const App: React.FC = () => {
               onUpdateBRD={(updates) => handleUpdateBRD(activeBrd.id, updates)}
               onAction={(action, status, comment) => handleAction(activeBrd.id, action, status, comment)}
               onRevise={() => handleRevise(activeBrd.id)}
-              onDelete={() => {
-                setBrds(prev => prev.filter(b => b.id !== activeBrd.id));
-                setActiveBrdId(null);
-                showToast("BRD deleted successfully", "success");
-                addNotification("BRD Deleted", `Project "${activeBrd.projectName}" has been removed.`, "info");
-              }}
+              onDelete={() => handleDeleteBRD(activeBrd.id)}
               currentUser={currentUser}
             />
           ) : (
@@ -404,13 +595,8 @@ const App: React.FC = () => {
         isOpen={isAdminPanelOpen} 
         onClose={() => setIsAdminPanelOpen(false)} 
         users={users} 
-        onUpdateUsers={(updated) => {
-          setUsers(updated);
-          // If current user was deleted, reset to first
-          if (!updated.find(u => u.id === currentUser.id)) {
-            setCurrentUser(updated[0]);
-          }
-        }}
+        onUpdateUsers={handleUpdateUsers}
+        useDatabase={useDatabase}
       />
 
       {toast && (

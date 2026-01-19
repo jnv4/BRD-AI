@@ -1,10 +1,12 @@
 
 import React, { useState } from 'react';
 import { AppUser, UserRole } from '../types';
+import { userApi } from '../services/apiService';
 
 interface LoginPageProps {
   users: AppUser[];
   onLogin: (user: AppUser) => void;
+  useDatabase?: boolean;
 }
 
 const DEMO_CREDENTIALS = [
@@ -19,25 +21,17 @@ const DEMO_CREDENTIALS = [
 const normalizeEmail = (e: string) => (e || '').trim().toLowerCase();
 const normalizePassword = (p: string) => (p || '').trim();
 
-const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin, useDatabase = false }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Find user with normalized comparison to handle cache/autofill edge cases
+  // Find user with normalized comparison to handle cache/autofill edge cases (for localStorage mode)
   const findUser = (inputEmail: string, inputPassword: string): AppUser | undefined => {
     const normEmail = normalizeEmail(inputEmail);
     const normPassword = normalizePassword(inputPassword);
-    
-    // Debug logging for production troubleshooting (safe - no passwords logged)
-    if (process.env.NODE_ENV === 'production' || !users.length) {
-      console.log('[Login Debug] Attempting login:', { 
-        inputEmail: normEmail, 
-        usersCount: users.length,
-        availableEmails: users.map(u => normalizeEmail(u.email))
-      });
-    }
     
     return users.find(u => 
       normalizeEmail(u.email) === normEmail && 
@@ -45,44 +39,92 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    const user = findUser(email, password);
-    
-    if (user) {
-      onLogin(user);
-    } else {
-      // Enhanced error with debug hint for production issues
-      const normEmail = normalizeEmail(email);
-      const emailExists = users.some(u => normalizeEmail(u.email) === normEmail);
-      
-      if (!users.length) {
-        setError('No users loaded. Try clearing browser cache and refreshing.');
-      } else if (!emailExists) {
-        setError('Email not found. Check the demo credentials below.');
-      } else {
-        setError('Invalid password. Check the demo credentials below.');
+  // Login via database API
+  const loginViaApi = async (inputEmail: string, inputPassword: string): Promise<AppUser | null> => {
+    try {
+      const result = await userApi.login(inputEmail, inputPassword);
+      if (result.user) {
+        return {
+          id: result.user.id,
+          name: result.user.name,
+          email: result.user.email,
+          role: result.user.role as UserRole,
+          password: '', // Don't store password on client
+        };
       }
-      
-      setIsShaking(true);
-      setTimeout(() => setIsShaking(false), 500);
+      return null;
+    } catch (error: any) {
+      console.error('Login API error:', error);
+      return null;
     }
   };
 
-  const handleQuickLogin = (demoEmail: string, demoPassword: string) => {
-    // Directly find and login user to avoid race conditions with async state updates
-    const user = findUser(demoEmail, demoPassword);
-    if (user) {
-      onLogin(user);
-    } else {
-      // If users from localStorage don't match demo creds, log for debugging
-      console.warn('[Login Debug] Quick login failed - user mismatch. Demo:', demoEmail, 'Available:', users.map(u => u.email));
-      // Fallback: set fields for manual submit
-      setEmail(demoEmail);
-      setPassword(demoPassword);
-      setError('Credentials mismatch. Try clearing site data (Ctrl+Shift+Del) and refresh.');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+    
+    try {
+      let user: AppUser | null | undefined = null;
+      
+      if (useDatabase) {
+        // Database mode - authenticate via API
+        user = await loginViaApi(email, password);
+      } else {
+        // LocalStorage mode - check local users array
+        user = findUser(email, password);
+      }
+      
+      if (user) {
+        onLogin(user);
+      } else {
+        // Enhanced error messages
+        if (useDatabase) {
+          setError('Invalid email or password. Check the demo credentials below.');
+        } else {
+          const normEmail = normalizeEmail(email);
+          const emailExists = users.some(u => normalizeEmail(u.email) === normEmail);
+          
+          if (!users.length) {
+            setError('No users loaded. Try clearing browser cache and refreshing.');
+          } else if (!emailExists) {
+            setError('Email not found. Check the demo credentials below.');
+          } else {
+            setError('Invalid password. Check the demo credentials below.');
+          }
+        }
+        
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 500);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuickLogin = async (demoEmail: string, demoPassword: string) => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      let user: AppUser | null | undefined = null;
+      
+      if (useDatabase) {
+        user = await loginViaApi(demoEmail, demoPassword);
+      } else {
+        user = findUser(demoEmail, demoPassword);
+      }
+      
+      if (user) {
+        onLogin(user);
+      } else {
+        console.warn('[Login Debug] Quick login failed');
+        setEmail(demoEmail);
+        setPassword(demoPassword);
+        setError('Credentials mismatch. Try the Sign In button.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -128,6 +170,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">BRD Architect</h1>
             <p className="text-slate-500 text-xs sm:text-sm mt-1">AI-Powered Business Requirements</p>
+            
+            {/* Database connection indicator */}
+            <div className={`inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-[10px] font-bold ${
+              useDatabase 
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-amber-100 text-amber-700'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${useDatabase ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+              {useDatabase ? 'Connected to Database' : 'Local Storage Mode'}
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5" autoComplete="off">
@@ -150,6 +202,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
                   autoComplete="off"
                   data-lpignore="true"
                   data-form-type="other"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -173,6 +226,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
                   autoComplete="new-password"
                   data-lpignore="true"
                   data-form-type="other"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -188,9 +242,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
 
             <button
               type="submit"
-              className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-lg sm:rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 active:scale-[0.98] text-sm sm:text-base"
+              disabled={isLoading}
+              className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-lg sm:rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 active:scale-[0.98] text-sm sm:text-base disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Sign In
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Signing In...
+                </>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
 
@@ -218,7 +283,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
               <button
                 key={cred.role}
                 onClick={() => handleQuickLogin(cred.email, cred.password)}
-                className="w-full text-left bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 hover:bg-white/20 transition-all group hover:scale-[1.02] active:scale-[0.98]"
+                disabled={isLoading}
+                className="w-full text-left bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 hover:bg-white/20 transition-all group hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ animationDelay: `${idx * 100}ms` }}
               >
                 <div className="flex items-center gap-2 sm:gap-4">
@@ -252,9 +318,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
               <div>
-                <p className="text-amber-200 text-[10px] sm:text-xs font-bold mb-0.5 sm:mb-1">Prototype Mode</p>
+                <p className="text-amber-200 text-[10px] sm:text-xs font-bold mb-0.5 sm:mb-1">
+                  {useDatabase ? 'Database Mode Active' : 'Prototype Mode'}
+                </p>
                 <p className="text-amber-200/70 text-[10px] sm:text-[11px] leading-relaxed">
-                  Demo version with test credentials. <span className="hidden sm:inline">In production, integrate with enterprise SSO/OAuth.</span>
+                  {useDatabase 
+                    ? 'Connected to PostgreSQL. All data is persisted to the database.'
+                    : 'Demo version with test credentials. Data stored in browser localStorage.'
+                  }
                 </p>
               </div>
             </div>

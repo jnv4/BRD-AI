@@ -17,8 +17,8 @@ All projects should be considered in the context of:
 `;
 
 export async function generateClarifyingQuestions(projectName: string): Promise<string[]> {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key is missing.");
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key is missing. Please set VITE_GEMINI_API_KEY in your environment.");
 
   const ai = new GoogleGenAI({ apiKey });
   
@@ -84,8 +84,8 @@ Example for 'Patient Appointment System':
 }
 
 export async function refineFieldContent(projectName: string, fieldName: string, currentContent: any, fieldType: 'text' | 'list' | 'stakeholders') {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key is missing.");
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key is missing. Please set VITE_GEMINI_API_KEY in your environment.");
   const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `${INDIRA_IVF_CONTEXT}
@@ -140,8 +140,8 @@ export async function refineFieldContent(projectName: string, fieldName: string,
 }
 
 export async function generateBRDContent(projectName: string, questions: string[], answers: string[], remarks?: string) {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key is missing.");
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key is missing. Please set VITE_GEMINI_API_KEY in your environment.");
 
   const ai = new GoogleGenAI({ apiKey });
 
@@ -299,8 +299,8 @@ export async function auditBRD(
   projectName: string, 
   content: BRDContent
 ): Promise<BRDAudit> {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key is missing.");
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key is missing. Please set VITE_GEMINI_API_KEY in your environment.");
 
   const ai = new GoogleGenAI({ apiKey });
 

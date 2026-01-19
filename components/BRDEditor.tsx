@@ -338,7 +338,7 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
             </div>
           )}
           
-          {(brd.audit || isAuditLoading) && (
+          {(brd.audit || isAuditLoading) && brd.status === BRDStatus.PENDING_VERIFICATION && (
             <BRDAuditPanel
               audit={brd.audit!}
               isLoading={isAuditLoading}

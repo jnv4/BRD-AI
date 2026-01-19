@@ -37,8 +37,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
   };
 
   const handleQuickLogin = (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
+    // Directly find and login user to avoid race conditions with async state updates
+    const user = users.find(u => u.email === demoEmail && u.password === demoPassword);
+    if (user) {
+      onLogin(user);
+    } else {
+      // Fallback: set fields for manual submit
+      setEmail(demoEmail);
+      setPassword(demoPassword);
+    }
   };
 
   const getRoleColor = (color: string) => {
@@ -85,7 +92,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
             <p className="text-slate-500 text-xs sm:text-sm mt-1">AI-Powered Business Requirements</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5" autoComplete="off">
             <div>
               <label className="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">Email Address</label>
               <div className="relative">
@@ -96,11 +103,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
                 </span>
                 <input
                   type="email"
+                  name="demo-email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 bg-slate-50 border-2 border-slate-200 rounded-lg sm:rounded-xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-xs sm:text-sm font-medium"
                   placeholder="Enter your email"
                   required
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-form-type="other"
                 />
               </div>
             </div>
@@ -115,11 +126,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
                 </span>
                 <input
                   type="password"
+                  name="demo-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 bg-slate-50 border-2 border-slate-200 rounded-lg sm:rounded-xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-xs sm:text-sm font-medium"
                   placeholder="Enter your password"
                   required
+                  autoComplete="new-password"
+                  data-lpignore="true"
+                  data-form-type="other"
                 />
               </div>
             </div>
@@ -143,7 +158,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
 
           <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-200 text-center">
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium">
-              DEMO VERSION • <span className="hidden sm:inline">Click any credential card to auto-fill →</span><span className="sm:hidden">Tap credential below ↓</span>
+              DEMO VERSION • <span className="hidden sm:inline">Click any credential card to login instantly →</span><span className="sm:hidden">Tap credential below ↓</span>
             </p>
           </div>
         </div>
@@ -157,7 +172,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
               </svg>
               Demo Credentials
             </h2>
-            <p className="text-white/60 text-xs sm:text-sm">Tap to auto-fill login form</p>
+            <p className="text-white/60 text-xs sm:text-sm">Tap to instantly login</p>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 sm:gap-4">

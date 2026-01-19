@@ -26,7 +26,7 @@ export interface AppUser {
   password: string;
 }
 
-export type BRDPriority = 'Good To Have' | 'Must To Have';
+export type BRDPriority = 'Good To Have' | 'Must Have';
 export type BRDCategory = 'Cost Saving' | 'Man Days Saving' | 'Compliance';
 
 export interface Stakeholder {

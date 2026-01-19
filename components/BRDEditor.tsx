@@ -383,7 +383,7 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
           </div>
           <div className="flex gap-3">
             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-              brd.content.priority === 'Must To Have' ? 'bg-rose-100 text-rose-700' : 'bg-indigo-100 text-indigo-700'
+              brd.content.priority === 'Must Have' ? 'bg-rose-100 text-rose-700' : 'bg-indigo-100 text-indigo-700'
             }`}>{brd.content.priority}</span>
             <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold uppercase">{brd.content.category}</span>
           </div>

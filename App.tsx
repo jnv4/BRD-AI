@@ -107,6 +107,7 @@ const App: React.FC = () => {
   };
 
   const handleCreateBRD = async (name: string, questions: string[], answers: string[], remarks?: string): Promise<boolean> => {
+    if (!currentUser) return false;
     setIsLoading(true);
     try {
       const generated = await generateBRDContent(name, questions, answers, remarks);
@@ -144,7 +145,7 @@ const App: React.FC = () => {
 
   const handleUpdateBRD = (id: string, updates: Partial<BRD>) => {
     const brd = brds.find(b => b.id === id);
-    if (!brd) return;
+    if (!brd || !currentUser) return;
 
     // Add log entry for significant status changes
     let logs = brd.logs;
@@ -210,7 +211,7 @@ const App: React.FC = () => {
 
   const handleAction = (id: string, action: string, newStatus: BRDStatus, comment?: string) => {
     const brd = brds.find(b => b.id === id);
-    if (!brd) return;
+    if (!brd || !currentUser) return;
 
     const logAction = newStatus === BRDStatus.REJECTED 
       ? `Rejected by ${currentUser.role}` 
@@ -257,7 +258,7 @@ const App: React.FC = () => {
 
   const handleRevise = (id: string) => {
     const brd = brds.find(b => b.id === id);
-    if (!brd) return;
+    if (!brd || !currentUser) return;
 
     const newVersion = brd.version + 1;
     const log: LogEntry = {

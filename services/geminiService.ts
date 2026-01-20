@@ -17,8 +17,8 @@ All projects should be considered in the context of:
 `;
 
 export async function generateClarifyingQuestions(projectName: string): Promise<string[]> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Gemini API Key is missing. Please set VITE_GEMINI_API_KEY in your environment.");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key is missing. Please set GEMINI_API_KEY in your .env file.");
 
   const ai = new GoogleGenAI({ apiKey });
   
@@ -84,8 +84,8 @@ Example for 'Patient Appointment System':
 }
 
 export async function refineFieldContent(projectName: string, fieldName: string, currentContent: any, fieldType: 'text' | 'list' | 'stakeholders') {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Gemini API Key is missing. Please set VITE_GEMINI_API_KEY in your environment.");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key is missing. Please set GEMINI_API_KEY in your .env file.");
   const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `${INDIRA_IVF_CONTEXT}
@@ -140,8 +140,8 @@ export async function refineFieldContent(projectName: string, fieldName: string,
 }
 
 export async function generateBRDContent(projectName: string, questions: string[], answers: string[], remarks?: string) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Gemini API Key is missing. Please set VITE_GEMINI_API_KEY in your environment.");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key is missing. Please set GEMINI_API_KEY in your .env file.");
 
   const ai = new GoogleGenAI({ apiKey });
 
@@ -156,58 +156,76 @@ export async function generateBRDContent(projectName: string, questions: string[
         parts: [{
           text: `${INDIRA_IVF_CONTEXT}
 
-Generate a PROFESSIONAL, CONCISE Business Requirements Document for Indira IVF.
+Generate a PROFESSIONAL Business Requirements Document for Indira IVF.
 
 PROJECT: "${projectName}"
 
-USER INPUT:
+=== USER'S REQUIREMENTS (MUST USE THESE EXACTLY) ===
 ${contextStr}${customInstructions}
+
+=== CRITICAL INSTRUCTIONS ===
+1. The BRD MUST be based DIRECTLY on the user's answers above
+2. DO NOT invent features, problems, or requirements not mentioned by the user
+3. Use the EXACT problems, features, and requirements the user specified
+4. If the user mentioned specific functionality, include it in the BRD
+5. The problem statement MUST reflect what the user said they want to solve
+6. The objectives MUST align with the user's stated goals
+7. Keep the user's language and terminology where appropriate
 
 === BRD SECTIONS ===
 
-1. EXECUTIVE SUMMARY (2-3 sentences only)
-   - Brief professional overview
+1. EXECUTIVE SUMMARY (2-3 sentences)
+   - Summarize the project based on USER'S answers
 
-2. PROBLEM STATEMENT (1 sentence)
-   - The core business challenge
+2. PROBLEM STATEMENT (1-2 sentences)
+   - Extract the core problem from USER'S answers
 
-3. PROPOSED SOLUTION (1 sentence)  
-   - How this addresses the problem
+3. PROPOSED SOLUTION (1-2 sentences)  
+   - Based on what USER described they want to build
 
 4. PURPOSE (1 sentence)
-   - Why this initiative matters
+   - Why this matters, based on USER'S context
 
-5. OBJECTIVES (3-4 bullet points)
-   - Specific, measurable goals
+5. OBJECTIVES (3-5 bullet points)
+   - Derived from USER'S stated goals and requirements
 
 6. SCOPE
-   - In-Scope: 3-4 key deliverables
-   - Out-of-Scope: 2-3 exclusions
+   - In-Scope: Features/deliverables USER mentioned (3-5 items)
+   - Out-of-Scope: Logical exclusions based on USER'S scope (2-3 items)
 
-7. KEY REQUIREMENTS (3-4 critical requirements)
-   - Title + description
+7. KEY REQUIREMENTS (3-5 critical requirements)
+   - Title + description - MUST reflect USER'S specific requirements
 
-8. SUCCESS CRITERIA (3 measurable outcomes)
+8. SUCCESS CRITERIA (3-4 measurable outcomes)
+   - Based on USER'S definition of success
 
 9. STAKEHOLDERS (4-5 key roles with responsibilities)
+   - Include roles USER mentioned
 
 10. KEY RISKS (2-3 risks with mitigation strategies)
+    - Realistic risks for this specific project
 
 11. ESTIMATED TIMELINE
+    - Realistic estimate based on scope
 
 === TONE ===
 - Professional, formal business language
 - Clear and precise
-- Suitable for executive presentation`
+- Suitable for executive presentation
+- FAITHFUL to user's input`
         }]
       },
       config: {
-        systemInstruction: `You are a Senior Business Analyst writing concise BRDs for Indira IVF.
+        systemInstruction: `You are a Senior Business Analyst writing BRDs for Indira IVF.
 
-RULES:
-- First 4 sections (Summary, Problem, Solution, Purpose) = 1-2 sentences each
-- Be concise but professional
-- No fluff or filler
+CRITICAL RULES:
+1. BASE EVERYTHING on the user's answers - do NOT make up requirements
+2. If the user said they want feature X, include feature X
+3. If the user mentioned problem Y, the problem statement must address Y
+4. Do NOT add generic enterprise features the user didn't ask for
+5. The BRD should feel like a professional version of what the user described
+6. Use the user's terminology and specific details
+7. Be concise but comprehensive
 
 Output JSON.`,
         responseMimeType: "application/json",
@@ -299,8 +317,8 @@ export async function auditBRD(
   projectName: string, 
   content: BRDContent
 ): Promise<BRDAudit> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Gemini API Key is missing. Please set VITE_GEMINI_API_KEY in your environment.");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key is missing. Please set GEMINI_API_KEY in your .env file.");
 
   const ai = new GoogleGenAI({ apiKey });
 
@@ -311,177 +329,235 @@ export async function auditBRD(
         parts: [{
           text: `${INDIRA_IVF_CONTEXT}
 
-You are a Senior Business Strategy Consultant, Healthcare IT Expert, and Market Analyst specializing in the Indian healthcare and fertility industry. Perform an EXHAUSTIVE and COMPREHENSIVE analysis of this internal project's Business Requirements Document for Indira IVF.
+You are a Senior Business Strategy Consultant and Healthcare IT Expert. Perform a PRACTICAL and REALISTIC analysis of this BRD for Indira IVF.
 
-PROJECT NAME: "${projectName}" (Internal Project for Indira IVF)
+PROJECT NAME: "${projectName}"
 
-BRD CONTENT:
-Purpose: ${content.purpose}
+=== BRD CONTENT TO EVALUATE ===
 
-Objectives:
-${content.objectives.map((o, i) => `${i + 1}. ${o}`).join('\n')}
+EXECUTIVE SUMMARY:
+${content.executiveSummary || 'Not provided'}
 
-Scope Included:
-${content.scopeIncluded.map(s => `- ${s}`).join('\n')}
+PROBLEM STATEMENT:
+${content.problemStatement || 'Not provided'}
 
-Scope Excluded:
-${content.scopeExcluded.map(s => `- ${s}`).join('\n')}
+PROPOSED SOLUTION:
+${content.proposedSolution || 'Not provided'}
 
-Stakeholders:
-${content.stakeholders.map(s => `- ${s.role}: ${s.responsibility}`).join('\n')}
+PURPOSE:
+${content.purpose || 'Not provided'}
 
-Priority: ${content.priority}
-Category: ${content.category}
+OBJECTIVES (${content.objectives?.length || 0} items):
+${content.objectives?.map((o, i) => `${i + 1}. ${o}`).join('\n') || 'None provided'}
 
-=== COMPREHENSIVE ANALYSIS REQUIREMENTS ===
+SCOPE - INCLUDED (${content.scopeIncluded?.length || 0} items):
+${content.scopeIncluded?.map(s => `• ${s}`).join('\n') || 'None provided'}
 
-Provide DETAILED analysis on EVERY aspect below. This is a critical business decision for Indira IVF - India's largest fertility clinic chain with 130+ centers.
+SCOPE - EXCLUDED (${content.scopeExcluded?.length || 0} items):
+${content.scopeExcluded?.map(s => `• ${s}`).join('\n') || 'None provided'}
 
-1. OVERALL SCORE (1-100):
-   Calculate a weighted overall score considering all factors below.
+KEY REQUIREMENTS (${content.keyRequirements?.length || 0} items):
+${content.keyRequirements?.map(r => `• ${r.title}: ${r.description}`).join('\n') || 'None provided'}
+
+SUCCESS CRITERIA (${content.successCriteria?.length || 0} items):
+${content.successCriteria?.map(c => `• ${c}`).join('\n') || 'None provided'}
+
+STAKEHOLDERS (${content.stakeholders?.length || 0} roles):
+${content.stakeholders?.map(s => `• ${s.role}: ${s.responsibility}`).join('\n') || 'None provided'}
+
+RISKS & MITIGATION (${content.keyRisks?.length || 0} identified):
+${content.keyRisks?.map(r => `• ${r.risk} → ${r.mitigation}`).join('\n') || 'None provided'}
+
+TIMELINE: ${content.estimatedTimeline || 'Not specified'}
+PRIORITY: ${content.priority || 'Not specified'}
+CATEGORY: ${content.category || 'Not specified'}
+
+=== BALANCED SCORING (Score each section, then total) ===
+
+Score FAIRLY - give credit for good content, identify gaps for weak content.
+
+SECTION SCORES (add them up):
+
+1. PROBLEM & PURPOSE (0-15 pts):
+   - 12-15: Specific problem with clear context, compelling purpose
+   - 8-11: Clear problem and purpose, could be more detailed
+   - 4-7: Somewhat vague problem or purpose
+   - 0-3: Very unclear or missing
+
+2. OBJECTIVES (0-20 pts):
+   - 16-20: Specific, measurable goals with clear targets
+   - 11-15: Good objectives, mostly clear
+   - 6-10: Generic but understandable objectives
+   - 0-5: Vague or missing
+
+3. SCOPE & REQUIREMENTS (0-20 pts):
+   - 16-20: Well-defined scope, detailed requirements
+   - 11-15: Clear scope and requirements with minor gaps
+   - 6-10: Reasonable scope, basic requirements
+   - 0-5: Unclear or missing
+
+4. SUCCESS CRITERIA (0-15 pts):
+   - 12-15: Measurable metrics with targets
+   - 8-11: Clear criteria, some measurable
+   - 4-7: Basic criteria defined
+   - 0-3: Vague or missing
+
+5. RISKS & STAKEHOLDERS (0-15 pts):
+   - 12-15: Realistic risks with mitigations, clear stakeholder roles
+   - 8-11: Good risk coverage and stakeholder identification
+   - 4-7: Basic risks and stakeholders listed
+   - 0-3: Superficial or missing
+
+6. TIMELINE & FEASIBILITY (0-15 pts):
+   - 12-15: Realistic timeline, clearly feasible
+   - 8-11: Reasonable timeline and approach
+   - 4-7: Timeline provided but questionable
+   - 0-3: Unrealistic or missing
+
+TOTAL = Sum of all sections (max 100)
+
+INTERPRET THE SCORE:
+- 80-100: EXCELLENT - Strong BRD, clear value, ready to proceed
+- 65-79: GOOD - Solid BRD, minor improvements needed
+- 50-64: FAIR - Decent foundation, needs more detail in places
+- 35-49: WEAK - Significant gaps, needs revision
+- Below 35: POOR - Major issues, needs rethink
+
+VERDICT MUST MATCH SCORE:
+- Score 75+: strong_go
+- Score 60-74: go_with_caution  
+- Score 45-59: needs_work
+- Score below 45: no_go
+
+=== ANALYSIS SECTIONS ===
 
 2. PROBLEMS SOLVED:
-   - List every specific problem this project addresses at Indira IVF
-   - How will it improve patient care, staff efficiency, operations?
-   - Provide detailed summary of problem-solution fit
+   - List problems this project addresses
+   - Assess problem-solution fit
+   - Note if well-defined or needs clarification
 
-3. MARKET VALUE ASSESSMENT:
-   - Internal market value for Indira IVF (score 1-100)
-   - Comparison with similar healthcare solutions
-   - Value proposition analysis
+3. MARKET VALUE (Score based on actual value potential):
+   - Real need at Indira IVF?
+   - Competitive advantage potential
+   - Score fairly based on the opportunity
 
 4. BUSINESS BENEFITS:
-   - List ALL tangible business benefits
-   - Revenue impact, cost savings, efficiency gains
-   - Operational improvements across 130+ centers
+   - List tangible benefits from the BRD
+   - Revenue/cost/efficiency impacts
+   - Be realistic but fair in assessment
 
 5. SUGGESTIONS FOR IMPROVEMENT:
-   - Detailed recommendations to enhance the project
-   - Missing features that should be considered
-   - Scope refinements for maximum impact
+   - Constructive recommendations
+   - What would make this BRD stronger?
+   - Prioritize actionable feedback
 
-6. BUSINESS VALUE ASSESSMENT:
-   - Business value score (1-100)
-   - Estimated ROI with calculations
-   - Time to value realization
+6. BUSINESS VALUE SCORE:
+   - Score the business case fairly
+   - Estimate ROI based on scope
+   - Time to realize value
 
-7. MARKET INSIGHTS:
-   - 5-7 market insights with positive/neutral/negative verdicts
-   - Competitor landscape in healthcare IT
+7-8. MARKET ANALYSIS:
+   - Healthcare IT market context
+   - 4-6 relevant insights
    - Market timing assessment
 
-8. MARKET TRENDS ANALYSIS:
-   - Current healthcare industry trends in India
-   - Fertility market outlook and growth projections
-   - Digital health transformation trends
-   - Identify 4-6 relevant market trends with impact levels
-
-9. CULTURAL & REGIONAL CONSIDERATIONS (CRITICAL FOR INDIA):
-   - Indian healthcare culture and patient expectations
-   - Family dynamics in fertility treatment decisions
-   - Regional variations across India (North, South, East, West)
-   - Language and communication considerations
-   - Trust factors in Indian healthcare
-   - Sensitivity around fertility treatments in Indian society
-   - Provide 4-6 cultural considerations with recommendations
+9. CULTURAL CONSIDERATIONS:
+   - Indian healthcare context
+   - 3-5 relevant factors
 
 10. FINANCIAL ANALYSIS:
-    - Detailed cost-benefit analysis
-    - Investment required estimates
-    - Payback period projection
-    - Long-term financial impact
-    - 4-6 financial projection metrics
+    - Cost-benefit assessment
+    - Investment estimates
+    - Payback projection
 
-11. TECHNOLOGY ASSESSMENT:
-    - Tech stack compatibility with existing Indira IVF systems
-    - Integration complexity analysis
-    - Data security and HIPAA/Indian healthcare data compliance
-    - Scalability assessment for 130+ centers
-    - 3-5 technology alignment aspects
+11. TECHNOLOGY:
+    - Integration needs
+    - Scalability for 130+ centers
+    - Technical feasibility
 
-12. STAKEHOLDER IMPACT ANALYSIS:
-    - Impact on patients (experience, outcomes)
-    - Impact on medical staff (doctors, nurses, embryologists)
-    - Impact on administrative staff
-    - Impact on management and decision-makers
-    - Adoption challenges for each stakeholder group
+12. STAKEHOLDER IMPACT:
+    - Benefits to each group
+    - Adoption considerations
 
-13. COMPLIANCE & REGULATORY:
-    - Healthcare regulations (PCPNDT Act, MTP Act, etc.)
-    - Data privacy compliance (IT Act, proposed DPDP Bill)
-    - Audit trail requirements
-    - Medical device regulations if applicable
+13. COMPLIANCE:
+    - Healthcare regulations
+    - Data privacy needs
 
 14. STRATEGIC ALIGNMENT:
-    - Alignment score with Indira IVF vision (1-100)
-    - Competitive advantage assessment
-    - Innovation score (1-100)
-    - How this positions Indira IVF in the market
+    - Fit with Indira IVF goals
+    - Innovation assessment
+    - Competitive positioning
 
-15. IMPLEMENTATION CONSIDERATIONS:
-    - Implementation complexity (high/medium/low)
-    - Realistic timeline estimation
-    - Resource requirements
-    - Training needs for staff
-    - Change management requirements
+15. IMPLEMENTATION:
+    - Complexity level
+    - Timeline assessment
+    - Resource needs
 
-16. LONG-TERM SUSTAINABILITY:
-    - Sustainability score (1-100)
-    - Maintenance requirements
-    - Future-proofing assessment
-    - Exit strategy if needed
+16. SUSTAINABILITY:
+    - Long-term viability
+    - Maintenance needs
 
-17. DETAILED RISK ANALYSIS:
-    - Comprehensive risk identification
-    - Likelihood and impact assessment for each risk
-    - Mitigation strategies
-    - Feasibility score (1-100)
+17. RISKS:
+    - Identified risks assessment
+    - Additional risks to consider
+    - Overall feasibility score
 
-18. INDUSTRY BENCHMARKS:
-    - How does this compare to industry standards?
-    - Best practices alignment
-    - Lessons from similar implementations
+18. BENCHMARKS:
+    - Industry comparison
+    - Best practices
 
 19. PROS & CONS:
-    - Complete list of genuine strengths
-    - Honest assessment of weaknesses
+    - Genuine strengths (give credit!)
+    - Areas for improvement
 
 20. IMPROVEMENTS NEEDED:
-    - Critical improvements (must address)
-    - Nice-to-have improvements
+    - Critical items (must address)
+    - Nice-to-have enhancements
 
-21. FINAL VERDICT & EXECUTIVE SUMMARY:
-    - Clear verdict: strong_go / go_with_caution / needs_work / no_go
-    - Detailed verdict summary
-    - Executive summary for leadership
-    - 5-7 key takeaways
+21. VERDICT (MUST match overall score):
+    - strong_go (75+): Clear value, ready to proceed
+    - go_with_caution (60-74): Good foundation, address noted items
+    - needs_work (45-59): Needs significant revision
+    - no_go (<45): Fundamental issues to resolve
 
-Be BRUTALLY HONEST and COMPREHENSIVE. This analysis will determine whether Indira IVF invests significant resources.
-Consider: healthcare regulations, patient data privacy, scalability across all centers, cultural sensitivities, market trends, and long-term sustainability.
-If this project has flaws, identify them clearly with solutions. If it's excellent, explain why with specifics.`
+Provide balanced summary and 5-7 key takeaways. Be fair - good work deserves recognition, gaps need honest feedback.`
         }]
       },
       config: {
-        systemInstruction: `You are an elite business strategist, healthcare IT consultant, and market analyst with deep expertise in:
-- Indian healthcare industry and regulations
-- Fertility and IVF market in India
-- Digital health transformation
-- Cultural nuances in Indian healthcare
-- Healthcare compliance (PCPNDT, MTP Act, IT Act)
-- Enterprise software implementation at scale
+        systemInstruction: `You are a fair and balanced business analyst. Evaluate BRDs honestly - reward good work, identify gaps in weak areas.
 
-You are conducting a COMPREHENSIVE due diligence analysis for Indira IVF - India's largest fertility clinic chain (130+ centers, 1,25,000+ IVF pregnancies).
+BALANCED SCORING APPROACH:
+- Score each section based on its actual quality (see rubric in prompt)
+- A well-written BRD with clear objectives and requirements SHOULD score 75-85
+- An average BRD with decent content scores 60-75
+- Only penalize for actual problems, not theoretical ones
+- Give credit for effort and completeness
 
-Your analysis must be:
-1. EXHAUSTIVE - Cover every possible angle
-2. HONEST - Don't sugarcoat issues
-3. ACTIONABLE - Provide specific recommendations
-4. CULTURALLY AWARE - Consider Indian context
-5. FORWARD-LOOKING - Consider market trends and future implications
-6. PRACTICAL - Consider implementation realities at scale
+RECOGNIZE GOOD BRDs:
+- Clear problem statement = good score for that section
+- Specific objectives with targets = high score
+- Detailed requirements = high score
+- Realistic risks with mitigations = high score
+- The more specific and detailed, the higher the score
 
-This analysis will be reviewed by CTO, Business heads, and potentially board members.
-Output EXTREMELY comprehensive analysis in JSON format.`,
+IDENTIFY WEAK AREAS FAIRLY:
+- If a section is vague, score it lower but don't penalize other sections
+- If something is missing, note it as a gap
+- Provide constructive feedback on how to improve
+
+PRACTICAL CONSIDERATIONS:
+- Healthcare context for Indira IVF
+- Scale of 130+ centers
+- Compliance requirements
+- Integration needs
+
+VERDICT ALIGNMENT:
+- Score 75+: strong_go (good BRD, proceed with confidence)
+- Score 60-74: go_with_caution (solid but address noted gaps)
+- Score 45-59: needs_work (significant improvements needed)
+- Score below 45: no_go (fundamental issues)
+
+Be honest but fair. Good BRDs deserve good scores. Weak BRDs need constructive feedback.`,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,

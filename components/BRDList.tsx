@@ -34,6 +34,16 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
       setStep('QUESTIONS');
     } catch (err) {
       console.error("Failed to get questions", err);
+      // Use fallback questions if API fails
+      const fallbackQuestions = [
+        "What is the main thing you want this project to do at Indira IVF?",
+        "Who are the people that will use this most often (patients, doctors, staff)?",
+        "Which Indira IVF centers or departments will benefit from this?",
+        "What specific problems are you trying to solve with this project, or what are your must-have requirements?"
+      ];
+      setQuestions(fallbackQuestions);
+      setAnswers(new Array(fallbackQuestions.length).fill(""));
+      setStep('QUESTIONS');
     } finally {
       setIsFetchingQuestions(false);
     }

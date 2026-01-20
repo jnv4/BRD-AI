@@ -73,6 +73,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
   const handleSave = () => {
     onUpdate(editContent);
+    // If BRD was verified, reset to draft since edits invalidate verification
+    if (brd.status === BRDStatus.VERIFIED) {
+      onUpdateBRD({ status: BRDStatus.DRAFT, isVerified: false, audit: undefined });
+    }
     setIsEditing(false);
   };
 
@@ -392,38 +396,89 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
         {/* 1. Executive Summary */}
         <div className="mb-5">
           <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">1. Executive Summary</h2>
-          <p className="text-sm text-slate-700 leading-relaxed">{brd.content.executiveSummary}</p>
+          {isEditing ? (
+            <textarea
+              className="w-full text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[80px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={editContent.executiveSummary}
+              onChange={(e) => setEditContent({...editContent, executiveSummary: e.target.value})}
+            />
+          ) : (
+            <p className="text-sm text-slate-700 leading-relaxed">{brd.content.executiveSummary}</p>
+          )}
         </div>
 
         {/* 2. Problem Statement */}
         <div className="mb-5">
           <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">2. Problem Statement</h2>
-          <p className="text-sm text-slate-700 leading-relaxed">{brd.content.problemStatement}</p>
+          {isEditing ? (
+            <textarea
+              className="w-full text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={editContent.problemStatement}
+              onChange={(e) => setEditContent({...editContent, problemStatement: e.target.value})}
+            />
+          ) : (
+            <p className="text-sm text-slate-700 leading-relaxed">{brd.content.problemStatement}</p>
+          )}
         </div>
 
         {/* 3. Proposed Solution */}
         <div className="mb-5">
           <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">3. Proposed Solution</h2>
-          <p className="text-sm text-slate-700 leading-relaxed">{brd.content.proposedSolution}</p>
+          {isEditing ? (
+            <textarea
+              className="w-full text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={editContent.proposedSolution}
+              onChange={(e) => setEditContent({...editContent, proposedSolution: e.target.value})}
+            />
+          ) : (
+            <p className="text-sm text-slate-700 leading-relaxed">{brd.content.proposedSolution}</p>
+          )}
         </div>
 
         {/* 4. Purpose */}
         <div className="mb-5">
           <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">4. Purpose</h2>
-          <p className="text-sm text-slate-700 leading-relaxed">{brd.content.purpose}</p>
+          {isEditing ? (
+            <textarea
+              className="w-full text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={editContent.purpose}
+              onChange={(e) => setEditContent({...editContent, purpose: e.target.value})}
+            />
+          ) : (
+            <p className="text-sm text-slate-700 leading-relaxed">{brd.content.purpose}</p>
+          )}
         </div>
 
         {/* 5. Objectives */}
         <div className="mb-5">
           <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">5. Objectives</h2>
-          <ul className="space-y-2">
-            {brd.content.objectives.map((obj, i) => (
-              <li key={i} className="text-sm text-slate-700 flex items-start gap-3">
-                <span className="bg-indigo-100 text-indigo-700 font-bold text-xs w-5 h-5 rounded flex items-center justify-center flex-shrink-0">{i+1}</span>
-                <span>{obj}</span>
-              </li>
-            ))}
-          </ul>
+          {isEditing ? (
+            <div className="space-y-2">
+              {editContent.objectives.map((obj, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span className="bg-indigo-100 text-indigo-700 font-bold text-xs w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-2">{i+1}</span>
+                  <input
+                    className="flex-1 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={obj}
+                    onChange={(e) => {
+                      const newObjectives = [...editContent.objectives];
+                      newObjectives[i] = e.target.value;
+                      setEditContent({...editContent, objectives: newObjectives});
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {brd.content.objectives.map((obj, i) => (
+                <li key={i} className="text-sm text-slate-700 flex items-start gap-3">
+                  <span className="bg-indigo-100 text-indigo-700 font-bold text-xs w-5 h-5 rounded flex items-center justify-center flex-shrink-0">{i+1}</span>
+                  <span>{obj}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* 6. Scope */}
@@ -432,29 +487,67 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h4 className="text-xs font-bold text-emerald-700 uppercase mb-2">In Scope</h4>
-              <ul className="space-y-1">
-                {brd.content.scopeIncluded.map((s, i) => (
-                  <li key={i} className="text-sm text-slate-700 flex gap-2">
-                    <span className="text-emerald-500">•</span> {s}
-                  </li>
-                ))}
-              </ul>
+              {isEditing ? (
+                <div className="space-y-1">
+                  {editContent.scopeIncluded.map((s, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <span className="text-emerald-500">•</span>
+                      <input
+                        className="flex-1 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={s}
+                        onChange={(e) => {
+                          const newScope = [...editContent.scopeIncluded];
+                          newScope[i] = e.target.value;
+                          setEditContent({...editContent, scopeIncluded: newScope});
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ul className="space-y-1">
+                  {brd.content.scopeIncluded.map((s, i) => (
+                    <li key={i} className="text-sm text-slate-700 flex gap-2">
+                      <span className="text-emerald-500">•</span> {s}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div>
               <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Out of Scope</h4>
-              <ul className="space-y-1">
-                {brd.content.scopeExcluded.map((s, i) => (
-                  <li key={i} className="text-sm text-slate-500 flex gap-2">
-                    <span>•</span> {s}
-                  </li>
-                ))}
-              </ul>
+              {isEditing ? (
+                <div className="space-y-1">
+                  {editContent.scopeExcluded.map((s, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <span>•</span>
+                      <input
+                        className="flex-1 text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={s}
+                        onChange={(e) => {
+                          const newScope = [...editContent.scopeExcluded];
+                          newScope[i] = e.target.value;
+                          setEditContent({...editContent, scopeExcluded: newScope});
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ul className="space-y-1">
+                  {brd.content.scopeExcluded.map((s, i) => (
+                    <li key={i} className="text-sm text-slate-500 flex gap-2">
+                      <span>•</span> {s}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
 
         {/* 7. Key Requirements */}
-        {brd.content.keyRequirements?.length > 0 && (
+        {(brd.content.keyRequirements?.length > 0 || isEditing) && (
           <div className="mb-5">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">7. Key Requirements</h2>
             <table className="w-full text-sm">
@@ -465,28 +558,76 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
                 </tr>
               </thead>
               <tbody>
-                {brd.content.keyRequirements.map((req, i) => (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="py-2 px-3 font-semibold text-slate-800">{req.title}</td>
-                    <td className="py-2 px-3 text-slate-600">{req.description}</td>
-                  </tr>
-                ))}
+                {isEditing ? (
+                  editContent.keyRequirements?.map((req, i) => (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="py-2 px-3">
+                        <input
+                          className="w-full font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          value={req.title}
+                          onChange={(e) => {
+                            const newReqs = [...(editContent.keyRequirements || [])];
+                            newReqs[i] = { ...newReqs[i], title: e.target.value };
+                            setEditContent({...editContent, keyRequirements: newReqs});
+                          }}
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input
+                          className="w-full text-slate-600 bg-slate-50 border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          value={req.description}
+                          onChange={(e) => {
+                            const newReqs = [...(editContent.keyRequirements || [])];
+                            newReqs[i] = { ...newReqs[i], description: e.target.value };
+                            setEditContent({...editContent, keyRequirements: newReqs});
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  brd.content.keyRequirements?.map((req, i) => (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="py-2 px-3 font-semibold text-slate-800">{req.title}</td>
+                      <td className="py-2 px-3 text-slate-600">{req.description}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         )}
 
         {/* 8. Success Criteria */}
-        {brd.content.successCriteria?.length > 0 && (
+        {(brd.content.successCriteria?.length > 0 || isEditing) && (
           <div className="mb-5">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">8. Success Criteria</h2>
-            <ul className="space-y-2">
-              {brd.content.successCriteria.map((c, i) => (
-                <li key={i} className="text-sm text-slate-700 flex gap-2">
-                  <span className="text-emerald-600 font-bold">✓</span> {c}
-                </li>
-              ))}
-            </ul>
+            {isEditing ? (
+              <div className="space-y-2">
+                {editContent.successCriteria?.map((c, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <input
+                      className="flex-1 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={c}
+                      onChange={(e) => {
+                        const newCriteria = [...(editContent.successCriteria || [])];
+                        newCriteria[i] = e.target.value;
+                        setEditContent({...editContent, successCriteria: newCriteria});
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {brd.content.successCriteria?.map((c, i) => (
+                  <li key={i} className="text-sm text-slate-700 flex gap-2">
+                    <span className="text-emerald-600 font-bold">✓</span> {c}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
@@ -501,18 +642,47 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
               </tr>
             </thead>
             <tbody>
-              {brd.content.stakeholders.map((s, i) => (
-                <tr key={i} className="border-b border-slate-100">
-                  <td className="py-2 px-3 font-semibold text-slate-800">{s.role}</td>
-                  <td className="py-2 px-3 text-slate-600">{s.responsibility}</td>
-                </tr>
-              ))}
+              {isEditing ? (
+                editContent.stakeholders.map((s, i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-2 px-3">
+                      <input
+                        className="w-full font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={s.role}
+                        onChange={(e) => {
+                          const newStakeholders = [...editContent.stakeholders];
+                          newStakeholders[i] = { ...newStakeholders[i], role: e.target.value };
+                          setEditContent({...editContent, stakeholders: newStakeholders});
+                        }}
+                      />
+                    </td>
+                    <td className="py-2 px-3">
+                      <input
+                        className="w-full text-slate-600 bg-slate-50 border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={s.responsibility}
+                        onChange={(e) => {
+                          const newStakeholders = [...editContent.stakeholders];
+                          newStakeholders[i] = { ...newStakeholders[i], responsibility: e.target.value };
+                          setEditContent({...editContent, stakeholders: newStakeholders});
+                        }}
+                      />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                brd.content.stakeholders.map((s, i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-2 px-3 font-semibold text-slate-800">{s.role}</td>
+                    <td className="py-2 px-3 text-slate-600">{s.responsibility}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* 10. Key Risks */}
-        {brd.content.keyRisks?.length > 0 && (
+        {(brd.content.keyRisks?.length > 0 || isEditing) && (
           <div className="mb-5">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">10. Key Risks & Mitigation</h2>
             <table className="w-full text-sm">
@@ -523,12 +693,41 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
                 </tr>
               </thead>
               <tbody>
-                {brd.content.keyRisks.map((r, i) => (
-                  <tr key={i} className="border-b border-amber-100">
-                    <td className="py-2 px-3 font-semibold text-slate-800">{r.risk}</td>
-                    <td className="py-2 px-3 text-slate-600">{r.mitigation}</td>
-                  </tr>
-                ))}
+                {isEditing ? (
+                  editContent.keyRisks?.map((r, i) => (
+                    <tr key={i} className="border-b border-amber-100">
+                      <td className="py-2 px-3">
+                        <input
+                          className="w-full font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          value={r.risk}
+                          onChange={(e) => {
+                            const newRisks = [...(editContent.keyRisks || [])];
+                            newRisks[i] = { ...newRisks[i], risk: e.target.value };
+                            setEditContent({...editContent, keyRisks: newRisks});
+                          }}
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input
+                          className="w-full text-slate-600 bg-slate-50 border border-slate-200 rounded p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          value={r.mitigation}
+                          onChange={(e) => {
+                            const newRisks = [...(editContent.keyRisks || [])];
+                            newRisks[i] = { ...newRisks[i], mitigation: e.target.value };
+                            setEditContent({...editContent, keyRisks: newRisks});
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  brd.content.keyRisks?.map((r, i) => (
+                    <tr key={i} className="border-b border-amber-100">
+                      <td className="py-2 px-3 font-semibold text-slate-800">{r.risk}</td>
+                      <td className="py-2 px-3 text-slate-600">{r.mitigation}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

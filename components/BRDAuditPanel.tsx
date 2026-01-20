@@ -1253,31 +1253,24 @@ const BRDAuditPanel: React.FC<BRDAuditPanelProps> = ({
             onClick={onProceed}
             className={`flex-1 flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 font-bold rounded-lg sm:rounded-xl transition-all shadow-lg text-sm ${
               audit.overallVerdict === 'no_go' 
-                ? 'bg-slate-400 text-white cursor-not-allowed'
+                ? 'bg-gradient-to-r from-rose-500 to-red-500 text-white hover:from-rose-600 hover:to-red-600 shadow-rose-100'
                 : audit.overallVerdict === 'strong_go'
                 ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 shadow-emerald-100'
                 : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-amber-100'
             }`}
-            disabled={audit.overallVerdict === 'no_go'}
           >
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
-            <span>
-              {audit.overallVerdict === 'no_go' 
-                ? 'Cannot Proceed' 
-                : audit.overallVerdict === 'strong_go'
-                ? 'Proceed'
-                : 'Proceed'}
-            </span>
+            <span>Proceed Anyway</span>
           </button>
         </div>
         
         <p className="mt-3 sm:mt-4 text-center text-[10px] sm:text-xs text-slate-500">
           {audit.overallVerdict === 'strong_go' && "Strong business value. Recommended to proceed."}
           {audit.overallVerdict === 'go_with_caution' && "Consider addressing improvements before proceeding."}
-          {audit.overallVerdict === 'needs_work' && "Improvements recommended. Proceed at your own risk."}
-          {audit.overallVerdict === 'no_go' && "Not recommended. Consider rethinking the approach."}
+          {audit.overallVerdict === 'needs_work' && "Improvements recommended. Proceed at your own discretion."}
+          {audit.overallVerdict === 'no_go' && "Not recommended, but you can still proceed if needed."}
         </p>
       </div>
 

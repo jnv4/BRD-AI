@@ -423,11 +423,10 @@ INTERPRET THE SCORE:
 - 35-49: WEAK - Significant gaps, needs revision
 - Below 35: POOR - Major issues, needs rethink
 
-VERDICT MUST MATCH SCORE:
-- Score 75+: strong_go
-- Score 60-74: go_with_caution  
-- Score 45-59: needs_work
-- Score below 45: no_go
+VERDICT MUST MATCH SCORE (STRICTLY FOLLOW):
+- Score 60+: strong_go (GREEN - good to proceed)
+- Score 40-59: go_with_caution (YELLOW - proceed with noted improvements)
+- Score below 40: needs_work or no_go (RED - significant issues)
 
 === ANALYSIS SECTIONS ===
 
@@ -514,11 +513,11 @@ VERDICT MUST MATCH SCORE:
     - Critical items (must address)
     - Nice-to-have enhancements
 
-21. VERDICT (MUST match overall score):
-    - strong_go (75+): Clear value, ready to proceed
-    - go_with_caution (60-74): Good foundation, address noted items
-    - needs_work (45-59): Needs significant revision
-    - no_go (<45): Fundamental issues to resolve
+21. VERDICT (MUST match overall score - STRICTLY FOLLOW):
+    - strong_go: Score 60 or above → GREEN, ready to proceed
+    - go_with_caution: Score 40-59 → YELLOW, address improvements
+    - needs_work: Score 25-39 → RED, needs revision
+    - no_go: Score below 25 → RED, fundamental issues
 
 Provide balanced summary and 5-7 key takeaways. Be fair - good work deserves recognition, gaps need honest feedback.`
         }]
@@ -551,11 +550,10 @@ PRACTICAL CONSIDERATIONS:
 - Compliance requirements
 - Integration needs
 
-VERDICT ALIGNMENT:
-- Score 75+: strong_go (good BRD, proceed with confidence)
-- Score 60-74: go_with_caution (solid but address noted gaps)
-- Score 45-59: needs_work (significant improvements needed)
-- Score below 45: no_go (fundamental issues)
+VERDICT ALIGNMENT (MUST FOLLOW):
+- Score 60+: strong_go (GREEN - proceed with confidence)
+- Score 40-59: go_with_caution (YELLOW - address noted gaps)
+- Score below 40: needs_work or no_go (RED - significant issues)
 
 Be honest but fair. Good BRDs deserve good scores. Weak BRDs need constructive feedback.`,
         responseMimeType: "application/json",

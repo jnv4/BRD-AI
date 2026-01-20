@@ -53,14 +53,14 @@ const BRDAuditPanel: React.FC<BRDAuditPanelProps> = ({
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 75) return 'text-emerald-600';
-    if (score >= 50) return 'text-amber-600';
+    if (score >= 60) return 'text-emerald-600';
+    if (score >= 40) return 'text-amber-500';
     return 'text-rose-600';
   };
 
   const getScoreBgColor = (score: number) => {
-    if (score >= 75) return 'bg-emerald-500';
-    if (score >= 50) return 'bg-amber-500';
+    if (score >= 60) return 'bg-emerald-500';
+    if (score >= 40) return 'bg-amber-500';
     return 'bg-rose-500';
   };
 
@@ -1226,8 +1226,8 @@ const BRDAuditPanel: React.FC<BRDAuditPanelProps> = ({
             <div className="w-full bg-slate-200 rounded-full h-2">
               <div 
                 className={`h-2 rounded-full transition-all duration-500 ${
-                  audit.feasibilityScore >= 75 ? 'bg-emerald-500' : 
-                  audit.feasibilityScore >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                  audit.feasibilityScore >= 60 ? 'bg-emerald-500' : 
+                  audit.feasibilityScore >= 40 ? 'bg-amber-500' : 'bg-rose-500'
                 }`}
                 style={{ width: `${audit.feasibilityScore}%` }}
               ></div>

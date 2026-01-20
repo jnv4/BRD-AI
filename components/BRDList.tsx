@@ -295,9 +295,9 @@ const BRDList: React.FC<BRDListProps> = ({ brds, activeId, onSelect, onCreate, i
                 </span>
                 {brd.audit && (
                   <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-                    (brd.audit.overallScore || brd.audit.businessValueScore) >= 75 
+                    (brd.audit.overallScore || brd.audit.businessValueScore) >= 60 
                       ? 'bg-emerald-100 text-emerald-700' 
-                      : (brd.audit.overallScore || brd.audit.businessValueScore) >= 50 
+                      : (brd.audit.overallScore || brd.audit.businessValueScore) >= 40 
                         ? 'bg-amber-100 text-amber-700' 
                         : 'bg-rose-100 text-rose-700'
                   }`}>

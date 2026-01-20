@@ -13,11 +13,13 @@ interface BRDEditorProps {
   onUpdateBRD: (updates: Partial<BRD>) => void;
   onAction: (action: string, nextStatus: BRDStatus, comment?: string) => void;
   onRevise: () => void;
+  onAIRefine: () => Promise<boolean>;
   onDelete: () => void;
   currentUser: AppUser;
+  isLoading?: boolean;
 }
 
-const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAction, onRevise, onDelete, currentUser }) => {
+const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAction, onRevise, onAIRefine, onDelete, currentUser, isLoading: externalLoading }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState<BRDContent>(brd.content);
   const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
@@ -105,16 +107,24 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
     html2pdf().set(opt).from(element).save();
   };
 
-  const handleAIRefine = async (fieldName: string, type: 'text' | 'list' | 'stakeholders') => {
+  const handleAIRefine = async (fieldName: string, type: 'text' | 'list' | 'stakeholders' | 'keyRequirements' | 'keyRisks' | 'successCriteria') => {
     setFieldLoading(fieldName);
     try {
       let currentVal: any;
       switch(fieldName) {
+        case 'executiveSummary': currentVal = editContent.executiveSummary; break;
+        case 'problemStatement': currentVal = editContent.problemStatement; break;
+        case 'proposedSolution': currentVal = editContent.proposedSolution; break;
         case 'purpose': currentVal = editContent.purpose; break;
         case 'objectives': currentVal = editContent.objectives; break;
         case 'scopeIncluded': currentVal = editContent.scopeIncluded; break;
         case 'scopeExcluded': currentVal = editContent.scopeExcluded; break;
         case 'stakeholders': currentVal = editContent.stakeholders; break;
+        case 'keyRequirements': currentVal = editContent.keyRequirements; break;
+        case 'keyRisks': currentVal = editContent.keyRisks; break;
+        case 'successCriteria': currentVal = editContent.successCriteria; break;
+        case 'estimatedTimeline': currentVal = editContent.estimatedTimeline; break;
+        default: currentVal = '';
       }
 
       const refined = await refineFieldContent(brd.projectName, fieldName, currentVal, type);
@@ -129,6 +139,24 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
       setFieldLoading(null);
     }
   };
+
+  // Helper component for AI refine button in section headers
+  const AIRefineButton = ({ fieldName, type, label }: { fieldName: string, type: 'text' | 'list' | 'stakeholders' | 'keyRequirements' | 'keyRisks' | 'successCriteria', label?: string }) => (
+    <button
+      onClick={() => handleAIRefine(fieldName, type)}
+      disabled={fieldLoading === fieldName}
+      className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[10px] font-bold hover:bg-indigo-100 transition-all border border-indigo-100 disabled:opacity-50 no-print"
+    >
+      {fieldLoading === fieldName ? (
+        <span className="animate-spin rounded-full h-2.5 w-2.5 border-2 border-indigo-600 border-t-transparent" />
+      ) : (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      )}
+      {label || 'AI Refine'}
+    </button>
+  );
 
   const handleReject = () => {
     if (!rejectionComment) return;
@@ -249,15 +277,29 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
           )}
 
           {brd.status === BRDStatus.REJECTED ? (
-            <button 
-              onClick={onRevise}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all shadow-md hover:shadow-indigo-100 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm flex-1 sm:flex-none justify-center"
-            >
-              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Revise
-            </button>
+            <div className="flex gap-2 sm:gap-3 flex-1 sm:flex-none">
+              <button 
+                onClick={onAIRefine}
+                disabled={externalLoading}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all shadow-md flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm flex-1 sm:flex-none justify-center disabled:opacity-50"
+              >
+                {externalLoading ? (
+                  <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                ) : (
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
+                AI Refine
+              </button>
+              <button 
+                onClick={onRevise}
+                disabled={externalLoading}
+                className="bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs sm:text-sm disabled:opacity-50"
+              >
+                Manual
+              </button>
+            </div>
           ) : (
             <>
               {!isEditing && (brd.status !== BRDStatus.APPROVED) && (brd.status !== BRDStatus.PENDING_VERIFICATION) && (
@@ -310,10 +352,37 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h4 className="text-rose-800 font-bold text-base sm:text-lg mb-1">BRD Requires Changes</h4>
             <p className="text-rose-700 text-xs sm:text-sm leading-relaxed font-medium break-words">Feedback: "{brd.rejectionComment}"</p>
-            <button onClick={onRevise} className="mt-2 sm:mt-3 text-rose-800 text-[10px] sm:text-xs font-bold underline hover:no-underline">CREATE NEW VERSION</button>
+            <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-3">
+              <button 
+                onClick={onAIRefine}
+                disabled={externalLoading}
+                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] sm:text-xs font-bold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md disabled:opacity-50"
+              >
+                {externalLoading ? (
+                  <>
+                    <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent" />
+                    Refining...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    AI Refine Based on Feedback
+                  </>
+                )}
+              </button>
+              <button 
+                onClick={onRevise} 
+                disabled={externalLoading}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 text-rose-700 text-[10px] sm:text-xs font-bold border-2 border-rose-200 rounded-lg hover:bg-rose-100 transition-all disabled:opacity-50"
+              >
+                Manual Revision
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -395,7 +464,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
         {/* 1. Executive Summary */}
         <div className="mb-5">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">1. Executive Summary</h2>
+          <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">1. Executive Summary</h2>
+            {isEditing && <AIRefineButton fieldName="executiveSummary" type="text" />}
+          </div>
           {isEditing ? (
             <textarea
               className="w-full text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[80px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -409,7 +481,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
         {/* 2. Problem Statement */}
         <div className="mb-5">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">2. Problem Statement</h2>
+          <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">2. Problem Statement</h2>
+            {isEditing && <AIRefineButton fieldName="problemStatement" type="text" />}
+          </div>
           {isEditing ? (
             <textarea
               className="w-full text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -423,7 +498,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
         {/* 3. Proposed Solution */}
         <div className="mb-5">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">3. Proposed Solution</h2>
+          <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">3. Proposed Solution</h2>
+            {isEditing && <AIRefineButton fieldName="proposedSolution" type="text" />}
+          </div>
           {isEditing ? (
             <textarea
               className="w-full text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -437,7 +515,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
         {/* 4. Purpose */}
         <div className="mb-5">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">4. Purpose</h2>
+          <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">4. Purpose</h2>
+            {isEditing && <AIRefineButton fieldName="purpose" type="text" />}
+          </div>
           {isEditing ? (
             <textarea
               className="w-full text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3 min-h-[60px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -451,7 +532,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
         {/* 5. Objectives */}
         <div className="mb-5">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">5. Objectives</h2>
+          <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">5. Objectives</h2>
+            {isEditing && <AIRefineButton fieldName="objectives" type="list" />}
+          </div>
           {isEditing ? (
             <div className="space-y-2">
               {editContent.objectives.map((obj, i) => (
@@ -483,10 +567,15 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
         {/* 6. Scope */}
         <div className="mb-5">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">6. Scope</h2>
+          <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">6. Scope</h2>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <h4 className="text-xs font-bold text-emerald-700 uppercase mb-2">In Scope</h4>
+              <div className="flex items-center mb-2">
+                <h4 className="text-xs font-bold text-emerald-700 uppercase">In Scope</h4>
+                {isEditing && <AIRefineButton fieldName="scopeIncluded" type="list" />}
+              </div>
               {isEditing ? (
                 <div className="space-y-1">
                   {editContent.scopeIncluded.map((s, i) => (
@@ -515,7 +604,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
               )}
             </div>
             <div>
-              <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Out of Scope</h4>
+              <div className="flex items-center mb-2">
+                <h4 className="text-xs font-bold text-slate-500 uppercase">Out of Scope</h4>
+                {isEditing && <AIRefineButton fieldName="scopeExcluded" type="list" />}
+              </div>
               {isEditing ? (
                 <div className="space-y-1">
                   {editContent.scopeExcluded.map((s, i) => (
@@ -549,7 +641,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
         {/* 7. Key Requirements */}
         {(brd.content.keyRequirements?.length > 0 || isEditing) && (
           <div className="mb-5">
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">7. Key Requirements</h2>
+            <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">7. Key Requirements</h2>
+              {isEditing && <AIRefineButton fieldName="keyRequirements" type="keyRequirements" />}
+            </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50">
@@ -601,7 +696,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
         {/* 8. Success Criteria */}
         {(brd.content.successCriteria?.length > 0 || isEditing) && (
           <div className="mb-5">
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">8. Success Criteria</h2>
+            <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">8. Success Criteria</h2>
+              {isEditing && <AIRefineButton fieldName="successCriteria" type="successCriteria" />}
+            </div>
             {isEditing ? (
               <div className="space-y-2">
                 {editContent.successCriteria?.map((c, i) => (
@@ -633,7 +731,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
         {/* 9. Stakeholders */}
         <div className="mb-5">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">9. Stakeholders</h2>
+          <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">9. Stakeholders</h2>
+            {isEditing && <AIRefineButton fieldName="stakeholders" type="stakeholders" />}
+          </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50">
@@ -684,7 +785,10 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
         {/* 10. Key Risks */}
         {(brd.content.keyRisks?.length > 0 || isEditing) && (
           <div className="mb-5">
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">10. Key Risks & Mitigation</h2>
+            <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">10. Key Risks & Mitigation</h2>
+              {isEditing && <AIRefineButton fieldName="keyRisks" type="keyRisks" />}
+            </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-amber-50">
@@ -735,8 +839,19 @@ const BRDEditor: React.FC<BRDEditorProps> = ({ brd, onUpdate, onUpdateBRD, onAct
 
         {/* 11. Timeline */}
         <div className="mb-5">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2 mb-3">11. Estimated Timeline</h2>
-          <p className="text-sm font-semibold text-indigo-700 bg-indigo-50 inline-block px-4 py-2 rounded">{brd.content.estimatedTimeline}</p>
+          <div className="flex items-center border-b border-slate-200 pb-2 mb-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wide">11. Estimated Timeline</h2>
+            {isEditing && <AIRefineButton fieldName="estimatedTimeline" type="text" />}
+          </div>
+          {isEditing ? (
+            <input
+              className="text-sm font-semibold text-indigo-700 bg-slate-50 border border-slate-200 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[200px]"
+              value={editContent.estimatedTimeline}
+              onChange={(e) => setEditContent({...editContent, estimatedTimeline: e.target.value})}
+            />
+          ) : (
+            <p className="text-sm font-semibold text-indigo-700 bg-indigo-50 inline-block px-4 py-2 rounded">{brd.content.estimatedTimeline}</p>
+          )}
         </div>
       </div>
 

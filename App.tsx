@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { BRD, BRDStatus, UserRole, LogEntry, NotificationItem, AppUser, BRDContent } from './types';
-import { generateBRDContent } from './services/geminiService';
+import { generateBRDContent, refineBRDWithFeedback } from './services/geminiService';
 import { userApi, brdApi, alertApi, isApiAvailable } from './services/apiService';
 import BRDList from './components/BRDList';
 import BRDEditor from './components/BRDEditor';
@@ -441,6 +441,54 @@ const App: React.FC = () => {
     showToast(`Revised to Version ${newVersion}`, "success");
   };
 
+  const handleAIRefine = async (id: string): Promise<boolean> => {
+    const brd = brds.find(b => b.id === id);
+    if (!brd || !currentUser || !brd.rejectionComment) return false;
+
+    setIsLoading(true);
+    try {
+      // Use AI to refine the BRD based on rejection feedback
+      const refinedContent = await refineBRDWithFeedback(
+        brd.projectName, 
+        brd.content, 
+        brd.rejectionComment
+      );
+
+      const newVersion = brd.version + 1;
+      const log: LogEntry = {
+        id: generateId(),
+        timestamp: Date.now(),
+        user: `${currentUser.name} (${currentUser.role})`,
+        action: `AI-Refined Version (v${newVersion}) based on feedback`,
+        version: newVersion
+      };
+
+      await updateBRD(id, {
+        version: newVersion,
+        status: BRDStatus.DRAFT,
+        content: refinedContent,
+        rejectionComment: undefined,
+        logs: [...brd.logs, log],
+        isVerified: false,
+        audit: undefined,
+        verificationHistory: []
+      });
+
+      showToast(`BRD refined with AI and updated to Version ${newVersion}`, "success");
+      addNotification(
+        "AI Refinement Complete", 
+        `Project "${brd.projectName}" has been improved based on feedback.`, 
+        "success"
+      );
+      return true;
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "AI refinement failed", "error");
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDeleteBRD = async (id: string) => {
     const brd = brds.find(b => b.id === id);
     if (!brd) return;
@@ -572,8 +620,10 @@ const App: React.FC = () => {
               onUpdateBRD={(updates) => handleUpdateBRD(activeBrd.id, updates)}
               onAction={(action, status, comment) => handleAction(activeBrd.id, action, status, comment)}
               onRevise={() => handleRevise(activeBrd.id)}
+              onAIRefine={() => handleAIRefine(activeBrd.id)}
               onDelete={() => handleDeleteBRD(activeBrd.id)}
               currentUser={currentUser}
+              isLoading={isLoading}
             />
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 px-4">

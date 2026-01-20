@@ -83,7 +83,7 @@ Example for 'Patient Appointment System':
   }
 }
 
-export async function refineFieldContent(projectName: string, fieldName: string, currentContent: any, fieldType: 'text' | 'list' | 'stakeholders') {
+export async function refineFieldContent(projectName: string, fieldName: string, currentContent: any, fieldType: 'text' | 'list' | 'stakeholders' | 'keyRequirements' | 'keyRisks' | 'successCriteria') {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("Gemini API Key is missing. Please set GEMINI_API_KEY in your .env file.");
   const ai = new GoogleGenAI({ apiKey });
@@ -96,10 +96,14 @@ export async function refineFieldContent(projectName: string, fieldName: string,
   
   Task: Take the user's draft and make it professional, clear, and comprehensive. 
   Consider this is for Indira IVF's internal use - a leading fertility clinic chain in India.
-  If the draft is empty or short, use your knowledge of the project name and Indira IVF's context to suggest high-quality content.`;
+  If the draft is empty or short, use your knowledge of the project name and Indira IVF's context to suggest high-quality content.
+  
+  IMPORTANT: Improve the existing content while keeping its essence. Make it more specific, measurable, and professionally worded.`;
 
   let responseSchema: any = { type: Type.STRING };
-  if (fieldType === 'list') {
+  let useJson = fieldType !== 'text';
+  
+  if (fieldType === 'list' || fieldType === 'successCriteria') {
     responseSchema = { type: Type.ARRAY, items: { type: Type.STRING } };
   } else if (fieldType === 'stakeholders') {
     responseSchema = { 
@@ -113,6 +117,30 @@ export async function refineFieldContent(projectName: string, fieldName: string,
         required: ["role", "responsibility"]
       } 
     };
+  } else if (fieldType === 'keyRequirements') {
+    responseSchema = { 
+      type: Type.ARRAY, 
+      items: { 
+        type: Type.OBJECT, 
+        properties: { 
+          title: { type: Type.STRING }, 
+          description: { type: Type.STRING } 
+        },
+        required: ["title", "description"]
+      } 
+    };
+  } else if (fieldType === 'keyRisks') {
+    responseSchema = { 
+      type: Type.ARRAY, 
+      items: { 
+        type: Type.OBJECT, 
+        properties: { 
+          risk: { type: Type.STRING }, 
+          mitigation: { type: Type.STRING } 
+        },
+        required: ["risk", "mitigation"]
+      } 
+    };
   }
 
   try {
@@ -122,20 +150,142 @@ export async function refineFieldContent(projectName: string, fieldName: string,
       config: {
         systemInstruction: `You are a Senior Business Analyst. Refine the provided BRD field. 
         - If fieldType is 'text', return a professional paragraph.
-        - If fieldType is 'list', return a JSON array of clear, concise bullet points.
+        - If fieldType is 'list' or 'successCriteria', return a JSON array of clear, concise bullet points.
         - If fieldType is 'stakeholders', return a JSON array of objects with 'role' and 'responsibility'.
+        - If fieldType is 'keyRequirements', return a JSON array of objects with 'title' and 'description'.
+        - If fieldType is 'keyRisks', return a JSON array of objects with 'risk' and 'mitigation'.
         Output ONLY the valid JSON or string based on the field type.`,
-        responseMimeType: fieldType === 'text' ? "text/plain" : "application/json",
-        responseSchema: fieldType === 'text' ? undefined : responseSchema
+        responseMimeType: useJson ? "application/json" : "text/plain",
+        responseSchema: useJson ? responseSchema : undefined
       }
     });
 
     const text = response.text;
     if (!text) throw new Error("No response from AI");
-    return fieldType === 'text' ? text : JSON.parse(text);
+    return useJson ? JSON.parse(text) : text;
   } catch (error) {
     console.error("Refinement Error:", error);
     throw error;
+  }
+}
+
+export async function refineBRDWithFeedback(projectName: string, content: BRDContent, rejectionFeedback: string): Promise<BRDContent> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key is missing. Please set GEMINI_API_KEY in your .env file.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: {
+        parts: [{
+          text: `${INDIRA_IVF_CONTEXT}
+
+You are helping improve a Business Requirements Document that was rejected.
+
+PROJECT: "${projectName}"
+
+REJECTION FEEDBACK:
+"${rejectionFeedback}"
+
+CURRENT BRD CONTENT:
+Executive Summary: ${content.executiveSummary}
+Problem Statement: ${content.problemStatement}
+Proposed Solution: ${content.proposedSolution}
+Purpose: ${content.purpose}
+Objectives: ${content.objectives.join('; ')}
+Scope Included: ${content.scopeIncluded.join('; ')}
+Scope Excluded: ${content.scopeExcluded.join('; ')}
+Key Requirements: ${content.keyRequirements?.map(r => `${r.title}: ${r.description}`).join('; ')}
+Success Criteria: ${content.successCriteria?.join('; ')}
+Stakeholders: ${content.stakeholders.map(s => `${s.role}: ${s.responsibility}`).join('; ')}
+Key Risks: ${content.keyRisks?.map(r => `${r.risk}: ${r.mitigation}`).join('; ')}
+Timeline: ${content.estimatedTimeline}
+Priority: ${content.priority}
+Category: ${content.category}
+
+TASK:
+1. Address the SPECIFIC feedback provided in the rejection
+2. Improve the sections mentioned in the feedback
+3. Keep sections that weren't criticized mostly the same
+4. Make the improvements practical and specific
+5. Maintain the original intent and scope of the project
+
+Generate an IMPROVED version of the BRD that addresses the rejection feedback.`
+        }]
+      },
+      config: {
+        systemInstruction: `You are a Senior Business Analyst improving a rejected BRD. 
+Focus on addressing the specific feedback given. 
+Don't change things unnecessarily - only improve what was criticized.
+Be specific and practical in your improvements.
+Output JSON.`,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            executiveSummary: { type: Type.STRING },
+            problemStatement: { type: Type.STRING },
+            proposedSolution: { type: Type.STRING },
+            purpose: { type: Type.STRING },
+            objectives: { type: Type.ARRAY, items: { type: Type.STRING } },
+            scopeIncluded: { type: Type.ARRAY, items: { type: Type.STRING } },
+            scopeExcluded: { type: Type.ARRAY, items: { type: Type.STRING } },
+            keyRequirements: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  description: { type: Type.STRING }
+                },
+                required: ["title", "description"]
+              }
+            },
+            successCriteria: { type: Type.ARRAY, items: { type: Type.STRING } },
+            stakeholders: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  role: { type: Type.STRING },
+                  responsibility: { type: Type.STRING }
+                },
+                required: ["role", "responsibility"]
+              }
+            },
+            keyRisks: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  risk: { type: Type.STRING },
+                  mitigation: { type: Type.STRING }
+                },
+                required: ["risk", "mitigation"]
+              }
+            },
+            estimatedTimeline: { type: Type.STRING },
+            priority: { type: Type.STRING, enum: ["Good To Have", "Must To Have"] },
+            category: { type: Type.STRING, enum: ["Cost Saving", "Man Days Saving", "Compliance"] }
+          },
+          required: [
+            "executiveSummary", "problemStatement", "proposedSolution",
+            "purpose", "objectives", "scopeIncluded", "scopeExcluded",
+            "keyRequirements", "successCriteria", "stakeholders", "keyRisks",
+            "estimatedTimeline", "priority", "category"
+          ]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No content received from AI.");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("AI Refinement Error:", error);
+    throw new Error(error instanceof Error ? error.message : "AI refinement failed");
   }
 }
 

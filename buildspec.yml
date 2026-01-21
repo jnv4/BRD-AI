@@ -1,0 +1,41 @@
+version: 0.2
+
+env:
+  variables:
+    NODE_ENV: production
+    PORT: "8080"
+    # These should be configured in CodeBuild / Pipeline environment variables or Secrets Manager:
+    # DB_HOST
+    # DB_PORT
+    # DB_NAME
+    # DB_USER
+    # DB_PASSWORD
+    # GEMINI_API_KEY
+    # VITE_API_URL
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "✅ Installing root dependencies..."
+      - npm ci
+
+  pre_build:
+    commands:
+      - echo "🏗️ Building frontend application..."
+      - npm run build
+
+      - echo "📦 Installing backend dependencies..."
+      - cd backend
+      - npm ci --production
+      - cd ..
+
+  build:
+    commands:
+      - echo "🚀 Build completed successfully"
+
+artifacts:
+  files:
+    - '**/*'
+  base-directory: .

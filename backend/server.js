@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { query, closePool } from './db/connection.js';
 import usersRouter from './routes/users.js';
 import brdsRouter from './routes/brds.js';
@@ -9,14 +11,21 @@ import alertsRouter from './routes/alerts.js';
 // Load environment variables
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Middleware
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
-  credentials: true,
-}));
+// Only use CORS in development (App Runner handles CORS in production)
+if (!isProduction) {
+  app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+    credentials: true,
+  }));
+}
 app.use(express.json({ limit: '10mb' }));
 
 // Request logging in development
@@ -50,10 +59,29 @@ app.use('/api/users', usersRouter);
 app.use('/api/brds', brdsRouter);
 app.use('/api/alerts', alertsRouter);
 
-// 404 handler
+// API 404 handler (must come before static file serving)
 app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
+
+// Serve static files from React app in production
+if (isProduction) {
+  // Serve static files from the frontend dist folder
+  const distPath = path.join(__dirname, '..', 'dist');
+  app.use(express.static(distPath, {
+    maxAge: '1y', // Cache static assets for 1 year
+    etag: true,
+  }));
+
+  // Handle React Router - return index.html for all non-API routes
+  app.get('*', (req, res) => {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'Endpoint not found' });
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 // Error handler
 app.use((err, req, res, next) => {

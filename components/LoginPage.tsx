@@ -261,22 +261,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin, useDatabase = fal
 
           <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-200 text-center">
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium">
-              DEMO VERSION • <span className="hidden sm:inline">Click any credential card to login instantly →</span><span className="sm:hidden">Tap credential below ↓</span>
+              <br></br> <span className="hidden sm:inline">Click any credential card to login instantly →</span><span className="sm:hidden">Tap credential below ↓</span>
             </p>
           </div>
         </div>
 
         {/* Demo Credentials Cards */}
         <div className="space-y-3 sm:space-y-4">
-          <div className="text-white mb-1 sm:mb-2">
-            <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-              Demo Credentials
-            </h2>
-            <p className="text-white/60 text-xs sm:text-sm">Tap to instantly login</p>
-          </div>
+          
 
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 sm:gap-4">
             {DEMO_CREDENTIALS.map((cred, idx) => (
@@ -310,25 +302,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin, useDatabase = fal
                 </div>
               </button>
             ))}
-          </div>
-
-          <div className="bg-amber-500/20 border border-amber-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4 mt-2 sm:mt-4">
-            <div className="flex items-start gap-2 sm:gap-3">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-amber-200 text-[10px] sm:text-xs font-bold mb-0.5 sm:mb-1">
-                  {useDatabase ? 'Database Mode Active' : 'Prototype Mode'}
-                </p>
-                <p className="text-amber-200/70 text-[10px] sm:text-[11px] leading-relaxed">
-                  {useDatabase 
-                    ? 'Connected to PostgreSQL. All data is persisted to the database.'
-                    : 'Demo version with test credentials. Data stored in browser localStorage.'
-                  }
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
